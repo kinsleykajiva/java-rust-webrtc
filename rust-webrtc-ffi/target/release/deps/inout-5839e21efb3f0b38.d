@@ -1,0 +1,11 @@
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\inout-5839e21efb3f0b38.d: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\errors.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout_buf.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\reserved.rs
+
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\libinout-5839e21efb3f0b38.rlib: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\errors.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout_buf.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\reserved.rs
+
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\libinout-5839e21efb3f0b38.rmeta: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\errors.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout_buf.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\reserved.rs
+
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\lib.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\errors.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\inout_buf.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\inout-0.1.4\src\reserved.rs:

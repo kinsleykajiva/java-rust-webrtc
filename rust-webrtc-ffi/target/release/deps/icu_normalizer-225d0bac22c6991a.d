@@ -1,0 +1,10 @@
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\icu_normalizer-225d0bac22c6991a.d: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\libicu_normalizer-225d0bac22c6991a.rlib: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\libicu_normalizer-225d0bac22c6991a.rmeta: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs
+
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\lib.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\properties.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\provider.rs:
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer-2.2.0\src\uts46.rs:

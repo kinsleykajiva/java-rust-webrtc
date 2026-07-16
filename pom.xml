@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.kinsleykajiva</groupId>
+    <artifactId>JavaRust-Webrtc</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <slf4j.version>2.0.13</slf4j.version>
+        <junit.version>5.10.2</junit.version>
+        <assertj.version>3.25.3</assertj.version>
+
+        <!-- Native FFI bridge (relative to the reactor/root project) -->
+        <ffi.crate.dir>${maven.multiModuleProjectDirectory}/rust-webrtc-ffi</ffi.crate.dir>
+        <ffi.header>${ffi.crate.dir}/webrtc_ffi.h</ffi.header>
+        <ffi.dll>${ffi.crate.dir}/target/release/rust_webrtc_ffi.dll</ffi.dll>
+        <jextract.home>C:\Users\Kinsley\jextract-25</jextract.home>
+        <generated.sources.dir>${project.build.directory}/generated-sources/jextract</generated.sources.dir>
+    </properties>
+
+    <modules>
+        <module>library</module>
+        <module>demo-code</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Logging Facade -->
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <!-- Testing -->
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-api</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat/>
+                    </java>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

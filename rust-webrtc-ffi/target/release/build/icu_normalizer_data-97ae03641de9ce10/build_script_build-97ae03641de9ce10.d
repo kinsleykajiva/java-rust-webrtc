@@ -1,0 +1,5 @@
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\build\icu_normalizer_data-97ae03641de9ce10\build_script_build-97ae03641de9ce10.d: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer_data-2.2.0\build.rs
+
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\build\icu_normalizer_data-97ae03641de9ce10\build_script_build-97ae03641de9ce10.exe: C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer_data-2.2.0\build.rs
+
+C:\Users\Kinsley\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\icu_normalizer_data-2.2.0\build.rs:
