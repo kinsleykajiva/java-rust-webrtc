@@ -10,18 +10,18 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 /** Static helpers for registering data-channel callbacks via FFM upcalls. */
-final class DataChannel {
+public final class DataChannel {
 
     private static final Linker LINKER = Linker.nativeLinker();
     private static final Arena ARENA = Arena.ofShared();
 
-    /** Called when a message arrives; data is a pointer/length pair. */
-    interface MessageCallback {
+    /** Called when a message arrives. */
+    public interface MessageCallback {
         void onMessage(int id, byte[] data);
     }
 
     /** Called on open/close; carries the channel id. */
-    interface StateCallback {
+    public interface StateCallback {
         void onState(int id);
     }
 
@@ -29,7 +29,7 @@ final class DataChannel {
         try {
             MethodHandle target = MethodHandles.lookup().findStatic(
                     DataChannel.class, "msgCb",
-                    MethodType.methodType(void.class, MemorySegment.class, short.class, MemorySegment.class, long.class));
+                    MethodType.methodType(void.class, MessageCallback.class, short.class, MemorySegment.class, int.class));
             MethodHandle bound = MethodHandles.insertArguments(target, 0, cb);
             FunctionDescriptor desc = FunctionDescriptor.ofVoid(
                     webrtc_ffi_h.C_SHORT, webrtc_ffi_h.C_POINTER, webrtc_ffi_h.C_LONG);
@@ -43,7 +43,7 @@ final class DataChannel {
         try {
             MethodHandle target = MethodHandles.lookup().findStatic(
                     DataChannel.class, "stateCb",
-                    MethodType.methodType(void.class, MemorySegment.class, short.class));
+                    MethodType.methodType(void.class, StateCallback.class, short.class));
             MethodHandle bound = MethodHandles.insertArguments(target, 0, cb);
             FunctionDescriptor desc = FunctionDescriptor.ofVoid(webrtc_ffi_h.C_SHORT);
             return LINKER.upcallStub(bound, desc, ARENA);
@@ -52,11 +52,11 @@ final class DataChannel {
         }
     }
 
-    private static void msgCb(MessageCallback cb, short id, MemorySegment data, long len) {
-        byte[] bytes = new byte[(int) len];
+    private static void msgCb(MessageCallback cb, short id, MemorySegment data, int len) {
+        byte[] bytes = new byte[len < 0 ? 0 : len];
         if (len > 0 && data != null && data.address() != 0) {
             MemorySegment.copy(data.reinterpret(len), java.lang.foreign.ValueLayout.JAVA_BYTE,
-                    0, bytes, 0, (int) len);
+                    0, bytes, 0, len);
         }
         cb.onMessage(id, bytes);
     }

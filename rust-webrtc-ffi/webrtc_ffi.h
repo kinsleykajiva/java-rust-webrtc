@@ -37,6 +37,21 @@ void webrtc_ffi_free_string(char *s);
 void *webrtc_ffi_config_create(void);
 
 /**
+ * Configure transport addresses and DTLS/network options.
+ *
+ * - `udp_addrs` / `tcp_addrs`: space/comma separated listen addresses. An empty
+ *   string leaves the default (UDP `0.0.0.0:0`); pass an explicit empty list to
+ *   disable that transport (e.g. empty UDP + a TCP addr = TCP only).
+ * - `dtls_role`: 0 unspecified, 1 auto, 2 client, 3 server.
+ * - `network_types`: bitmask, bit0=udp, bit1=tcp (0 = library defaults).
+ */
+int webrtc_ffi_config_set_transport(void *cfg,
+                                    const char *udp_addrs,
+                                    const char *tcp_addrs,
+                                    int dtls_role,
+                                    int network_types);
+
+/**
  * Add a STUN/TURN server (urls separated by commas/spaces, optional user & credential).
  */
 int webrtc_ffi_config_add_ice_server(void *cfg,
@@ -65,10 +80,11 @@ void *webrtc_ffi_peer_create(void *cfg,
 int webrtc_ffi_peer_close(void *peer);
 
 /**
- * Create an SDP offer. Returns a newly allocated description handle
- * (free with [`webrtc_ffi_description_free`]). On error returns null.
+ * Create an SDP offer. `ice_restart` (non-zero) regenerates ICE credentials.
+ * Returns a newly allocated description handle (free with
+ * [`webrtc_ffi_description_free`]). On error returns null.
  */
-void *webrtc_ffi_create_offer(void *peer);
+void *webrtc_ffi_create_offer(void *peer, int ice_restart);
 
 /**
  * Create an SDP answer. Returns a newly allocated description handle or null.
@@ -128,9 +144,10 @@ int webrtc_ffi_add_ice_candidate(void *peer,
 int webrtc_ffi_create_data_channel(void *peer, const char *label, bool ordered);
 
 /**
- * Register callbacks for a data channel (by id).
+ * Register callbacks for a data channel (by id) on a specific peer.
  */
-void webrtc_ffi_data_channel_set_callbacks(uint16_t id,
+void webrtc_ffi_data_channel_set_callbacks(void *peer,
+                                           uint16_t id,
                                            void (*on_message)(uint16_t, const uint8_t*, uintptr_t),
                                            void (*on_open)(uint16_t),
                                            void (*on_close)(uint16_t));

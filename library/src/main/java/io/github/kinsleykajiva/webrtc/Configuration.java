@@ -53,6 +53,40 @@ public final class Configuration implements AutoCloseable {
         return this;
     }
 
+    /**
+     * Configures the transport layer.
+     *
+     * @param udpAddrs   space/comma separated UDP listen addresses, or {@code null}/empty
+     *                   for the default {@code 0.0.0.0:0}. Pass an explicit empty string to
+     *                   disable UDP (combined with TCP addrs this yields TCP-only gathering).
+     * @param tcpAddrs   space/comma separated TCP listen addresses (RFC 4571), or
+     *                   {@code null}/empty to disable TCP.
+     * @param dtlsRole   one of {@link DtlsRole} (e.g. {@link DtlsRole#CLIENT} for the answerer).
+     * @param networkTypes bitmask of {@link NetworkType} values (0 = library defaults).
+     */
+    public Configuration setTransport(String udpAddrs, String tcpAddrs, int dtlsRole, int networkTypes) {
+        checkClosed();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment udp = str(arena, udpAddrs);
+            MemorySegment tcp = str(arena, tcpAddrs);
+            int rc = webrtc_ffi_h.webrtc_ffi_config_set_transport(handle, udp, tcp, dtlsRole, networkTypes);
+            if (rc != 0) {
+                throw new IllegalArgumentException("Invalid transport configuration: " + rc);
+            }
+        }
+        return this;
+    }
+
+    /** Forces TCP-only candidate gathering on the given TCP listen address. */
+    public Configuration useTcpOnly(String tcpAddr, DtlsRole dtlsRole) {
+        return setTransport("", tcpAddr, dtlsRole.value, NetworkType.TCP.value);
+    }
+
+    /** Forces TCP-only candidate gathering with both UDP and TCP network types enabled. */
+    public Configuration useNetworkTypes(int networkTypes) {
+        return setTransport(null, null, 0, networkTypes);
+    }
+
     private static MemorySegment str(Arena arena, String s) {
         if (s == null) {
             return MemorySegment.NULL;

@@ -19,26 +19,43 @@ use webrtc::peer_connection::{
     PeerConnection, PeerConnectionBuilder, PeerConnectionEventHandler, RTCConfigurationBuilder,
     RTCPeerConnectionIceEvent,
 };
+use webrtc::runtime::default_runtime;
 use webrtc::data_channel::{DataChannel as _, DataChannelEvent, RTCDataChannelInit};
 
 use rtc::data_channel::{RTCDataChannelId, RTCDataChannelMessage, RTCDataChannelState};
 use rtc::peer_connection::configuration::RTCIceServer;
+use rtc::peer_connection::configuration::RTCOfferOptions;
+use rtc::peer_connection::configuration::setting_engine::SettingEngine;
 use rtc::peer_connection::sdp::{RTCSdpType, RTCSessionDescription};
 use rtc::peer_connection::state::RTCPeerConnectionState;
-use rtc::peer_connection::transport::{RTCIceCandidateInit};
+use rtc::peer_connection::transport::{RTCIceCandidateInit, RTCDtlsRole};
+use rtc::ice::network_type::NetworkType;
 use rtc::rtp_transceiver::rtp_sender::{RtpCodecKind, RTCRtpEncodingParameters};
 use rtc::rtp_transceiver::{RTCRtpTransceiverDirection, RTCRtpTransceiverInit};
 
-/// Per-process async runtime used to drive every async PeerConnection operation.
-static RUNTIME: Lazy<Runtime> = Lazy::new(|| {
+/// Runtime that actually drives each PeerConnection's async work. Callbacks
+/// (ICE candidate, state changes, data channel polls) are delivered on its
+/// worker threads.
+static PC_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
-        .expect("failed to build tokio runtime")
+        .expect("failed to build peer-connection tokio runtime")
+});
+
+/// Separate runtime used to block on async FFI calls. It must NOT be the same
+/// runtime that drives the PeerConnections, otherwise a callback firing on a
+/// `PC_RUNTIME` worker that re-enters an FFI call would call `block_on` from
+/// inside a runtime ("Cannot start a runtime from within a runtime").
+static CALL_RUNTIME: Lazy<Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("failed to build call tokio runtime")
 });
 
 fn block_on<F: std::future::Future>(fut: F) -> F::Output {
-    RUNTIME.block_on(fut)
+    CALL_RUNTIME.block_on(fut)
 }
 
 // ---------------------------------------------------------------------------
@@ -48,34 +65,53 @@ fn block_on<F: std::future::Future>(fut: F) -> F::Output {
 /// A builder-side configuration accumulated before constructing a peer connection.
 struct Config {
     ice_servers: Vec<RTCIceServer>,
+    /// UDP listen addresses; empty forces TCP-only gathering.
+    udp_addrs: Vec<String>,
+    /// TCP listen addresses (RFC 4571).
+    tcp_addrs: Vec<String>,
+    /// DTLS answering role: 0=auto/unspecified, 1=auto, 2=client, 3=server.
+    dtls_role: c_int,
+    /// Network type bitmask: bit0=udp, bit1=tcp (0 = defaults).
+    network_types: c_int,
 }
 
 /// Live peer connection plus its event forwarder and open data channels.
 struct Peer {
     pc: Arc<dyn PeerConnection>,
     /// Data channels created locally or received remotely, keyed by id.
-    data_channels: Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>,
+    /// Shared with the event `Forwarder` so remotely-received channels can be
+    /// registered and polled.
+    data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
+    /// Per-channel message/open/close callbacks, keyed by channel id.
+    dc_callbacks: Arc<DcCallbackMap>,
 }
 
 impl Peer {
-    fn new(pc: Arc<dyn PeerConnection>) -> Self {
+    fn new(
+        pc: Arc<dyn PeerConnection>,
+        data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
+        dc_callbacks: Arc<DcCallbackMap>,
+    ) -> Self {
         Self {
             pc,
-            data_channels: Mutex::new(HashMap::new()),
+            data_channels,
+            dc_callbacks,
         }
     }
 }
 
 /// Registry of active data-channel message callbacks keyed by channel id.
-static DATA_CHANNEL_CALLBACKS: Lazy<Mutex<HashMap<u16, DataChannelCallbacks>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
-
 #[derive(Clone, Copy)]
 struct DataChannelCallbacks {
     on_message: Option<extern "C" fn(u16, *const u8, usize)>,
     on_open: Option<extern "C" fn(u16)>,
     on_close: Option<extern "C" fn(u16)>,
 }
+
+/// Per-peer registry of data-channel callbacks, keyed by channel id. Shared
+/// between the owning `Peer` and its event `Forwarder` so remotely-received
+/// channels (which generate their own ids) resolve to the correct callbacks.
+type DcCallbackMap = Mutex<HashMap<u16, DataChannelCallbacks>>;
 
 // ---------------------------------------------------------------------------
 // C callback function-pointer types (Java supplies these via jextract downcalls)
@@ -135,8 +171,55 @@ pub extern "C" fn webrtc_ffi_free_string(s: *mut c_char) {
 pub extern "C" fn webrtc_ffi_config_create() -> *mut c_void {
     let cfg = Box::new(Config {
         ice_servers: Vec::new(),
+        udp_addrs: vec!["0.0.0.0:0".to_string()],
+        tcp_addrs: Vec::new(),
+        dtls_role: 0,
+        network_types: 0,
     });
     Box::into_raw(cfg) as *mut c_void
+}
+
+/// Configure transport addresses and DTLS/network options.
+///
+/// - `udp_addrs` / `tcp_addrs`: space/comma separated listen addresses. An empty
+///   string leaves the default (UDP `0.0.0.0:0`); pass an explicit empty list to
+///   disable that transport (e.g. empty UDP + a TCP addr = TCP only).
+/// - `dtls_role`: 0 unspecified, 1 auto, 2 client, 3 server.
+/// - `network_types`: bitmask, bit0=udp, bit1=tcp (0 = library defaults).
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_config_set_transport(
+    cfg: *mut c_void,
+    udp_addrs: *const c_char,
+    tcp_addrs: *const c_char,
+    dtls_role: c_int,
+    network_types: c_int,
+) -> c_int {
+    if cfg.is_null() {
+        return -1;
+    }
+    let parse = |p: *const c_char| -> Vec<String> {
+        read_str(p)
+            .split(|c| c == ',' || c == ' ' || c == '\n')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
+    };
+    let udp = parse(udp_addrs);
+    let tcp = parse(tcp_addrs);
+    unsafe {
+        let c = &mut *(cfg as *mut Config);
+        // An empty UDP list means "no UDP". The default `0.0.0.0:0` is only
+        // applied when neither transport was specified (preserving prior behavior).
+        c.udp_addrs = if udp.is_empty() && tcp.is_empty() {
+            vec!["0.0.0.0:0".to_string()]
+        } else {
+            udp
+        };
+        c.tcp_addrs = tcp;
+        c.dtls_role = dtls_role;
+        c.network_types = network_types;
+    }
+    0
 }
 
 /// Add a STUN/TURN server (urls separated by commas/spaces, optional user & credential).
@@ -190,6 +273,11 @@ struct Forwarder {
     on_ice_candidate: Option<IceCandidateCallback>,
     on_connection_state: Option<ConnectionStateCallback>,
     on_data_channel: Option<DataChannelCallback>,
+    /// Shared with the owning `Peer` so remotely-received data channels can be
+    /// registered for polling.
+    data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
+    /// Per-channel callbacks shared with the owning `Peer`.
+    dc_callbacks: Arc<DcCallbackMap>,
 }
 
 // Raw pointers make Forwarder !Send/!Sync; the handler is only ever used from the
@@ -203,9 +291,19 @@ impl PeerConnectionEventHandler for Forwarder {
         if let Some(cb) = &self.on_ice_candidate {
             // RFC 5245 candidate attribute: foundation prio proto addr port typ ...
             let c = &event.candidate;
+            let tcp_suffix = if c.protocol == rtc::peer_connection::transport::RTCIceProtocol::Tcp {
+                match c.tcp_type {
+                    rtc::peer_connection::transport::RTCIceTcpCandidateType::Active => " tcptype active",
+                    rtc::peer_connection::transport::RTCIceTcpCandidateType::Passive => " tcptype passive",
+                    rtc::peer_connection::transport::RTCIceTcpCandidateType::SimultaneousOpen => " tcptype so",
+                    _ => "",
+                }
+            } else {
+                ""
+            };
             let candidate_str = format!(
-                "candidate:{} {} {} {} {} {} typ {}",
-                c.foundation, c.component, c.protocol, c.priority, c.address, c.port, c.typ
+                "candidate:{} {} {} {} {} {} typ {}{}",
+                c.foundation, c.component, c.protocol, c.priority, c.address, c.port, c.typ, tcp_suffix
             );
             let cand_c = CString::new(candidate_str).unwrap_or_default();
             cb(self.user_data, cand_c.as_ptr(), std::ptr::null());
@@ -219,11 +317,17 @@ impl PeerConnectionEventHandler for Forwarder {
     }
 
     async fn on_data_channel(&self, dc: Arc<dyn webrtc::data_channel::DataChannel>) {
+        // Register the remotely-received channel so its messages get polled.
+        let id = dc.id();
         if let Some(cb) = &self.on_data_channel {
-            let id = dc.id();
             let label = dc.label().await.unwrap_or_default();
             let label_c = CString::new(label).unwrap_or_default();
+            self.data_channels.lock().unwrap().insert(id, dc.clone());
+            spawn_data_channel_poller(dc.clone(), id, self.dc_callbacks.clone());
             cb(self.user_data, id, label_c.as_ptr());
+        } else {
+            self.data_channels.lock().unwrap().insert(id, dc.clone());
+            spawn_data_channel_poller(dc, id, self.dc_callbacks.clone());
         }
     }
 }
@@ -242,6 +346,9 @@ pub extern "C" fn webrtc_ffi_peer_create(
     on_connection_state: ConnectionStateCallback,
     on_data_channel: DataChannelCallback,
 ) -> *mut c_void {
+    let data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let dc_callbacks: Arc<DcCallbackMap> = Arc::new(Mutex::new(HashMap::new()));
     let handler = Forwarder {
         user_data,
         on_ice_candidate: if callback_is_null(Some(on_ice_candidate)) {
@@ -259,6 +366,8 @@ pub extern "C" fn webrtc_ffi_peer_create(
         } else {
             Some(on_data_channel)
         },
+        data_channels: data_channels.clone(),
+        dc_callbacks: dc_callbacks.clone(),
     };
 
     let mut builder = PeerConnectionBuilder::new().with_handler(Arc::new(handler));
@@ -271,6 +380,20 @@ pub extern "C" fn webrtc_ffi_peer_create(
     }
     builder = builder.with_media_engine(media_engine);
 
+    // Drive the PeerConnection on an explicit tokio runtime (matches the
+    // reference examples, which call `with_runtime`).
+    if let Some(rt) = default_runtime() {
+        builder = builder.with_runtime(rt);
+    }
+
+    // Default interceptor registry. Data channels do not require interceptors,
+    // but the builder expects a `Registry<NoopInterceptor>`; the default
+    // registry (no RTP/RTCP interceptors) is sufficient for data-only use.
+    let registry = webrtc::peer_connection::Registry::<webrtc::peer_connection::NoopInterceptor>::new();
+    builder = builder.with_interceptor_registry(registry);
+
+    let mut setting_engine = SettingEngine::default();
+
     if !cfg.is_null() {
         let c = unsafe { &*(cfg as *const Config) };
         if !c.ice_servers.is_empty() {
@@ -279,14 +402,46 @@ pub extern "C" fn webrtc_ffi_peer_create(
                 .build();
             builder = builder.with_configuration(configuration);
         }
+
+        // Apply DTLS answering role if requested.
+        if c.dtls_role == 1 {
+            let _ = setting_engine.set_answering_dtls_role(RTCDtlsRole::Auto);
+        } else if c.dtls_role == 2 {
+            let _ = setting_engine.set_answering_dtls_role(RTCDtlsRole::Client);
+        } else if c.dtls_role == 3 {
+            let _ = setting_engine.set_answering_dtls_role(RTCDtlsRole::Server);
+        }
+
+        // Apply explicit network types (UDP/TCP) when requested.
+        if c.network_types != 0 {
+            let mut types = Vec::new();
+            if c.network_types & 1 != 0 {
+                types.push(NetworkType::Udp4);
+                types.push(NetworkType::Udp6);
+            }
+            if c.network_types & 2 != 0 {
+                types.push(NetworkType::Tcp4);
+                types.push(NetworkType::Tcp6);
+            }
+            setting_engine.set_network_types(types);
+        }
+
+        builder = builder.with_setting_engine(setting_engine);
+
+        if !c.tcp_addrs.is_empty() {
+            builder = builder.with_tcp_addrs(c.tcp_addrs.clone());
+        }
+        builder = builder.with_udp_addrs(c.udp_addrs.clone());
+    } else {
+        builder = builder.with_udp_addrs(vec!["0.0.0.0:0".to_string()]);
     }
 
-    let pc = match block_on(builder.with_udp_addrs(vec!["0.0.0.0:0"]).build()) {
+    let pc = match PC_RUNTIME.block_on(builder.build()) {
         Ok(pc) => Arc::new(pc) as Arc<dyn PeerConnection>,
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let peer = Box::new(Peer::new(pc));
+    let peer = Box::new(Peer::new(pc, data_channels, dc_callbacks));
     Box::into_raw(peer) as *mut c_void
 }
 
@@ -308,15 +463,21 @@ pub extern "C" fn webrtc_ffi_peer_close(peer: *mut c_void) -> c_int {
 // SDP offer / answer
 // ---------------------------------------------------------------------------
 
-/// Create an SDP offer. Returns a newly allocated description handle
-/// (free with [`webrtc_ffi_description_free`]). On error returns null.
+/// Create an SDP offer. `ice_restart` (non-zero) regenerates ICE credentials.
+/// Returns a newly allocated description handle (free with
+/// [`webrtc_ffi_description_free`]). On error returns null.
 #[no_mangle]
-pub extern "C" fn webrtc_ffi_create_offer(peer: *mut c_void) -> *mut c_void {
+pub extern "C" fn webrtc_ffi_create_offer(peer: *mut c_void, ice_restart: c_int) -> *mut c_void {
     if peer.is_null() {
         return std::ptr::null_mut();
     }
     let p = unsafe { &*(peer as *const Peer) };
-    match block_on(p.pc.create_offer(None)) {
+    let options = if ice_restart != 0 {
+        Some(RTCOfferOptions { ice_restart: true })
+    } else {
+        None
+    };
+    match block_on(p.pc.create_offer(options)) {
         Ok(desc) => Box::into_raw(Box::new(desc)) as *mut c_void,
         Err(_) => std::ptr::null_mut(),
     }
@@ -506,10 +667,15 @@ pub extern "C" fn webrtc_ffi_add_ice_candidate(
         url: None,
     };
     let p = unsafe { &*(peer as *const Peer) };
-    match block_on(p.pc.add_ice_candidate(init)) {
-        Ok(()) => 0,
-        Err(_) => -2,
-    }
+    // This function is typically invoked from an ICE candidate callback that runs
+    // on a `PC_RUNTIME` worker thread, so we must not `block_on` here (that would
+    // panic with "runtime within a runtime"). Spawn the async work onto the PC
+    // runtime and return immediately.
+    let pc = p.pc.clone();
+    PC_RUNTIME.spawn(async move {
+        let _ = pc.add_ice_candidate(init).await;
+    });
+    0
 }
 
 // ---------------------------------------------------------------------------
@@ -543,19 +709,24 @@ pub extern "C" fn webrtc_ffi_create_data_channel(
     };
     let id = dc.id();
     p.data_channels.lock().unwrap().insert(id, dc.clone());
-    spawn_data_channel_poller(dc, id);
+    spawn_data_channel_poller(dc, id, p.dc_callbacks.clone());
     id as c_int
 }
 
-/// Register callbacks for a data channel (by id).
+/// Register callbacks for a data channel (by id) on a specific peer.
 #[no_mangle]
 pub extern "C" fn webrtc_ffi_data_channel_set_callbacks(
+    peer: *mut c_void,
     id: u16,
     on_message: Option<extern "C" fn(u16, *const u8, usize)>,
     on_open: Option<extern "C" fn(u16)>,
     on_close: Option<extern "C" fn(u16)>,
 ) {
-    DATA_CHANNEL_CALLBACKS.lock().unwrap().insert(
+    if peer.is_null() {
+        return;
+    }
+    let p = unsafe { &*(peer as *const Peer) };
+    p.dc_callbacks.lock().unwrap().insert(
         id,
         DataChannelCallbacks {
             on_message,
@@ -580,10 +751,14 @@ pub extern "C" fn webrtc_ffi_data_channel_send_text(
         Some(dc) => dc,
         None => return -2,
     };
-    match block_on(dc.send_text(read_str(text))) {
-        Ok(()) => 0,
-        Err(_) => -3,
-    }
+    // Read the string into an owned value before spawning (raw pointers are not Send).
+    let message = read_str(text).to_string();
+    // May be called from a data-channel poller callback running on a PC_RUNTIME
+    // worker, so spawn instead of blocking.
+    PC_RUNTIME.spawn(async move {
+        let _ = dc.send_text(message.as_str()).await;
+    });
+    0
 }
 
 /// Send raw bytes on a data channel. Returns 0 on success.
@@ -605,22 +780,26 @@ pub extern "C" fn webrtc_ffi_data_channel_send_bytes(
     };
     let mut buf = bytes::BytesMut::with_capacity(len);
     buf.extend_from_slice(bytes);
-    match block_on(dc.send(buf)) {
-        Ok(()) => 0,
-        Err(_) => -3,
-    }
+    PC_RUNTIME.spawn(async move {
+        let _ = dc.send(buf).await;
+    });
+    0
 }
 
 /// Poll a data channel for events on a background task and forward to callbacks.
-fn spawn_data_channel_poller(dc: Arc<dyn webrtc::data_channel::DataChannel>, id: u16) {
-    RUNTIME.spawn(async move {
+fn spawn_data_channel_poller(
+    dc: Arc<dyn webrtc::data_channel::DataChannel>,
+    id: u16,
+    callbacks: Arc<DcCallbackMap>,
+) {
+    PC_RUNTIME.spawn(async move {
         let mut opened = false;
         loop {
             match dc.poll().await {
                 Some(DataChannelEvent::OnOpen) => {
                     opened = true;
                     if let Some(cb) =
-                        DATA_CHANNEL_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_open)
+                        callbacks.lock().unwrap().get(&id).and_then(|c| c.on_open)
                     {
                         cb(id);
                     }
@@ -629,30 +808,32 @@ fn spawn_data_channel_poller(dc: Arc<dyn webrtc::data_channel::DataChannel>, id:
                     if !opened {
                         opened = true;
                         if let Some(cb) =
-                            DATA_CHANNEL_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_open)
+                            callbacks.lock().unwrap().get(&id).and_then(|c| c.on_open)
                         {
                             cb(id);
                         }
                     }
                     if let Some(cb) =
-                        DATA_CHANNEL_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_message)
+                        callbacks.lock().unwrap().get(&id).and_then(|c| c.on_message)
                     {
                         let payload: &[u8] = msg.data.as_ref();
                         cb(id, payload.as_ptr(), payload.len());
                     }
                 }
-                Some(DataChannelEvent::OnClose) => {
+                Some(DataChannelEvent::OnClose) | None => {
                     if let Some(cb) =
-                        DATA_CHANNEL_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_close)
+                        callbacks.lock().unwrap().get(&id).and_then(|c| c.on_close)
                     {
                         cb(id);
                     }
                     break;
                 }
-                _ => break,
+                // OnError / OnClosing / OnBufferedAmountLow / OnBufferedAmountHigh:
+                // keep polling; these do not terminate the channel.
+                _ => {}
             }
         }
-        DATA_CHANNEL_CALLBACKS.lock().unwrap().remove(&id);
+        callbacks.lock().unwrap().remove(&id);
     });
 }
 

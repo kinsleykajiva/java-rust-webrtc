@@ -76,6 +76,8 @@
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_config_free</argument>
                                 <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_set_transport</argument>
+                                <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_create</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_close</argument>

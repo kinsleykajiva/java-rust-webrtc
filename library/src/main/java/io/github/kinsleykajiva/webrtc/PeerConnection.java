@@ -128,8 +128,17 @@ public final class PeerConnection implements AutoCloseable {
 
     /** Creates an SDP offer. */
     public SessionDescription createOffer() {
+        return createOffer(false);
+    }
+
+    /**
+     * Creates an SDP offer.
+     *
+     * @param iceRestart when {@code true} generates fresh ICE credentials (ICE restart).
+     */
+    public SessionDescription createOffer(boolean iceRestart) {
         checkClosed();
-        MemorySegment h = webrtc_ffi_h.webrtc_ffi_create_offer(handle);
+        MemorySegment h = webrtc_ffi_h.webrtc_ffi_create_offer(handle, iceRestart ? 1 : 0);
         if (h == null || h.address() == 0) {
             throw new IllegalStateException("createOffer failed");
         }
@@ -209,7 +218,7 @@ public final class PeerConnection implements AutoCloseable {
         MemorySegment onMsg = onMessage == null ? MemorySegment.NULL : DataChannel.upcallMessage(onMessage);
         MemorySegment onOp = onOpen == null ? MemorySegment.NULL : DataChannel.upcallState(onOpen);
         MemorySegment onCl = onClose == null ? MemorySegment.NULL : DataChannel.upcallState(onClose);
-        webrtc_ffi_h.webrtc_ffi_data_channel_set_callbacks((short) id, onMsg, onOp, onCl);
+        webrtc_ffi_h.webrtc_ffi_data_channel_set_callbacks(handle, (short) id, onMsg, onOp, onCl);
     }
 
     /** Sends UTF-8 text on a data channel. */

@@ -6,6 +6,7 @@ io\github\kinsleykajiva\webrtc\DataChannel$MessageCallback.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_close$Function.class
 io\github\kinsleykajiva\webrtc\DataChannel.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_config_create.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_config_set_transport.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_message.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_data_channel.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_data_channel_set_callbacks.class
@@ -20,6 +21,7 @@ io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_create.cl
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_free.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_supported_codecs.class
 io\github\kinsleykajiva\webrtc\Codec.class
+io\github\kinsleykajiva\webrtc\DtlsRole.class
 io\github\kinsleykajiva\webrtc\internal\NativeLibraryLoader.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_init.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_set_remote_description.class
@@ -30,6 +32,7 @@ io\github\kinsleykajiva\webrtc\TransceiverDirection.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_message$Function.class
 io\github\kinsleykajiva\webrtc\Configuration.class
 io\github\kinsleykajiva\webrtc\PeerConnection$Observer.class
+io\github\kinsleykajiva\webrtc\NetworkType.class
 io\github\kinsleykajiva\webrtc\WebRtc.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_config_add_ice_server.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_peer_create.class
