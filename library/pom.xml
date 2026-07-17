@@ -69,6 +69,44 @@
                                 <argument>webrtc_ffi_init</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_free_string</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_create</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_add_ice_server</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_free</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_peer_create</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_peer_close</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_create_offer</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_create_answer</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_set_local_description</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_set_remote_description</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_description_create</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_description_sdp</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_description_type</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_description_free</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_add_transceiver</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_add_ice_candidate</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_create_data_channel</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_data_channel_set_callbacks</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_data_channel_send_text</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_data_channel_send_bytes</argument>
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>

@@ -1716,8 +1716,12 @@ dependencies = [
 name = "rust-webrtc-ffi"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "bytes",
  "cbindgen",
  "lazy_static",
+ "once_cell",
+ "rtc",
  "tokio",
  "webrtc",
 ]
