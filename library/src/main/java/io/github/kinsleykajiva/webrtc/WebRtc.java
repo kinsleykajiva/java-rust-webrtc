@@ -37,4 +37,33 @@ public final class WebRtc {
             return result;
         }
     }
+
+    /**
+     * Returns the full list of RTP codecs supported by the native implementation.
+     *
+     * <p>The set is derived from the media engine's default codec registry (audio and
+     * video), including RTX repair streams and FEC codecs where registered.</p>
+     */
+    public static java.util.List<Codec> listSupportedCodecs() {
+        initialize();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment ptr = webrtc_ffi_h.webrtc_ffi_supported_codecs();
+            if (ptr == null || ptr.address() == 0) {
+                return java.util.List.of();
+            }
+            String raw = ptr.reinterpret(Long.MAX_VALUE).getString(0L);
+            webrtc_ffi_h.webrtc_ffi_free_string(ptr);
+            java.util.List<Codec> codecs = new java.util.ArrayList<>();
+            for (String line : raw.split("\n", -1)) {
+                if (line.isEmpty()) {
+                    continue;
+                }
+                Codec c = Codec.parse(line);
+                if (c != null) {
+                    codecs.add(c);
+                }
+            }
+            return java.util.List.copyOf(codecs);
+        }
+    }
 }

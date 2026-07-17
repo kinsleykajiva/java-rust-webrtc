@@ -145,4 +145,19 @@ int webrtc_ffi_data_channel_send_text(void *peer, uint16_t id, const char *text)
  */
 int webrtc_ffi_data_channel_send_bytes(void *peer, uint16_t id, const uint8_t *data, uintptr_t len);
 
+/**
+ * Return the full list of supported codecs as a NUL-terminated string.
+ *
+ * The returned string is owned by the caller and must be freed with
+ * [`webrtc_ffi_free_string`]. Each codec is on its own line, with fields
+ * separated by horizontal tabs:
+ *
+ * ```text
+ * <kind>\t<mime_type>\t<clock_rate>\t<channels>\t<payload_type>\t<fmtp>
+ * ```
+ *
+ * `<kind>` is `audio` or `video`. `<channels>` is `0` for video codecs.
+ */
+char *webrtc_ffi_supported_codecs(void);
+
 #endif /* WEBRTC_FFI_H */

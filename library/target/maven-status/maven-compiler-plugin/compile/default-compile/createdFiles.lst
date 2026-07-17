@@ -18,6 +18,8 @@ io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_offer.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_open$Function.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_create.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_free.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_supported_codecs.class
+io\github\kinsleykajiva\webrtc\Codec.class
 io\github\kinsleykajiva\webrtc\internal\NativeLibraryLoader.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_init.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_set_remote_description.class

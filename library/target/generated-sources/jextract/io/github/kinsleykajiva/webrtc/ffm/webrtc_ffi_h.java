@@ -1300,5 +1300,63 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
            throw new AssertionError("should not reach here", ex$);
         }
     }
+
+    private static class webrtc_ffi_supported_codecs {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER    );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_supported_codecs");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_supported_codecs()
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_supported_codecs$descriptor() {
+        return webrtc_ffi_supported_codecs.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_supported_codecs()
+     * }
+     */
+    public static MethodHandle webrtc_ffi_supported_codecs$handle() {
+        return webrtc_ffi_supported_codecs.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_supported_codecs()
+     * }
+     */
+    public static MemorySegment webrtc_ffi_supported_codecs$address() {
+        return webrtc_ffi_supported_codecs.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_supported_codecs()
+     * }
+     */
+    public static MemorySegment webrtc_ffi_supported_codecs() {
+        var mh$ = webrtc_ffi_supported_codecs.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_supported_codecs");
+            }
+            return (MemorySegment)mh$.invokeExact();
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
 }
 

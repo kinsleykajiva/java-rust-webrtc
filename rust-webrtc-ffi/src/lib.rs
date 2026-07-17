@@ -655,3 +655,50 @@ fn spawn_data_channel_poller(dc: Arc<dyn webrtc::data_channel::DataChannel>, id:
         DATA_CHANNEL_CALLBACKS.lock().unwrap().remove(&id);
     });
 }
+
+// ---------------------------------------------------------------------------
+// Codec enumeration
+// ---------------------------------------------------------------------------
+
+/// Return the full list of supported codecs as a NUL-terminated string.
+///
+/// The returned string is owned by the caller and must be freed with
+/// [`webrtc_ffi_free_string`]. Each codec is on its own line, with fields
+/// separated by horizontal tabs:
+///
+/// ```text
+/// <kind>\t<mime_type>\t<clock_rate>\t<channels>\t<payload_type>\t<fmtp>
+/// ```
+///
+/// `<kind>` is `audio` or `video`. `<channels>` is `0` for video codecs.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_supported_codecs() -> *mut c_char {
+    let mut me = rtc::peer_connection::configuration::media_engine::MediaEngine::default();
+    if me.register_default_codecs().is_err() {
+        return unsafe { into_cstring(String::new()) };
+    }
+
+    let mut out = String::new();
+    for (kind_str, codecs) in [
+        ("audio", me.registered_audio_codecs()),
+        ("video", me.registered_video_codecs()),
+    ] {
+        for c in codecs {
+            let channels = if c.rtp_codec.channels == 0 {
+                String::new()
+            } else {
+                c.rtp_codec.channels.to_string()
+            };
+            out.push_str(&format!(
+                "{}\t{}\t{}\t{}\t{}\t{}\n",
+                kind_str,
+                c.rtp_codec.mime_type,
+                c.rtp_codec.clock_rate,
+                channels,
+                c.payload_type,
+                c.rtp_codec.sdp_fmtp_line,
+            ));
+        }
+    }
+    unsafe { into_cstring(out) }
+}

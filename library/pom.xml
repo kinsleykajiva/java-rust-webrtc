@@ -107,6 +107,8 @@
                                 <argument>webrtc_ffi_data_channel_send_text</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_data_channel_send_bytes</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_supported_codecs</argument>
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>

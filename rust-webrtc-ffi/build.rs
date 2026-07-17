@@ -1,6 +1,10 @@
 use std::env;
 
 fn main() {
+    // Regenerate the C header whenever the public API surface changes.
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=cbindgen.toml");
+
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     
     cbindgen::Builder::new()
