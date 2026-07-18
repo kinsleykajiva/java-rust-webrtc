@@ -8,12 +8,14 @@ io\github\kinsleykajiva\webrtc\OggReader$OggHeader.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_track_remote_label.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_data_channel_set_callbacks.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_sdp.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_config_set_allocator_flags.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_get_stats.class
 io\github\kinsleykajiva\webrtc\IvfReader.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h.class
 io\github\kinsleykajiva\webrtc\IvfReader$IvfFileHeader.class
 io\github\kinsleykajiva\webrtc\StatsReport.class
 io\github\kinsleykajiva\webrtc\OggReader$OggPage.class
+io\github\kinsleykajiva\webrtc\PortAllocatorFlags.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_track_local_rtp.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_create.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_free.class
@@ -72,6 +74,7 @@ io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_set_local_description
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$shared.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_message$Function.class
 io\github\kinsleykajiva\webrtc\WebRtc.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_config_set_port_range.class
 io\github\kinsleykajiva\webrtc\StatsReport$PeerConnectionStats.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_track_remote_set_callbacks.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_add_track.class

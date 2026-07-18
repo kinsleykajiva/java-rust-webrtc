@@ -78,6 +78,10 @@
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_config_set_transport</argument>
                                 <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_set_port_range</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_set_allocator_flags</argument>
+                                <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_create</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_close</argument>

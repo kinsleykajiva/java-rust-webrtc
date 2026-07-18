@@ -7,6 +7,7 @@ import io.github.kinsleykajiva.webrtc.MediaKind;
 import io.github.kinsleykajiva.webrtc.MimeTypes;
 import io.github.kinsleykajiva.webrtc.PeerConnection;
 import io.github.kinsleykajiva.webrtc.PeerConnectionState;
+import io.github.kinsleykajiva.webrtc.PortAllocatorFlags;
 import io.github.kinsleykajiva.webrtc.SessionDescription;
 import io.github.kinsleykajiva.webrtc.WebRtc;
 import java.util.concurrent.CountDownLatch;
@@ -36,8 +37,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *   <tr><td><b>relay</b></td><td>TURN server</td><td>Relay address through TURN server. Required when both peers are behind symmetric NATs.</td></tr>
  * </table>
  *
- * <h2>Four Modes</h2>
- * <p>This demo supports 4 ICE modes via command-line argument:</p>
+ * <h2>Five Modes</h2>
+ * <p>This demo supports 5 ICE modes via command-line argument:</p>
  * <pre>
  *   java TrickleIceDemo [mode]
  *
@@ -46,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *     srflx    - Host + STUN server-reflexive candidates
  *     relay    - Relay candidates only (TURN server, relay policy)
  *     combined - Host + srflx + relay (STUN + TURN servers)
+ *     flags    - Demonstrates PortAllocatorFlags + port range filtering
  * </pre>
  *
  * <h2>Trickle ICE Flow</h2>
@@ -255,6 +257,10 @@ public class TrickleIceDemo {
         System.out.printf("║  Offerer gathering: %-32s ║%n", offererGathering.get());
         System.out.printf("║  Answerer gathering:%-32s ║%n", answererGathering.get());
         System.out.printf("║  DC received:       %-32s ║%n", dcReceived.get());
+        if ("flags".equals(mode)) {
+            System.out.printf("║  Port range:        %-32s ║%n", "10000-10050");
+            System.out.printf("║  Allocator flags:   %-32s ║%n", "DISABLE_RELAY (" + PortAllocatorFlags.DISABLE_RELAY + ")");
+        }
         System.out.println("╠══════════════════════════════════════════════════════╣");
         System.out.println("║  Candidate types:                                   ║");
         System.out.println("║    host   - local network interface (always avail)  ║");
@@ -281,6 +287,7 @@ public class TrickleIceDemo {
      *   <tr><td>{@code srflx}</td><td>STUN server</td><td>Host + Server-reflexive</td></tr>
      *   <tr><td>{@code relay}</td><td>TURN server</td><td>Relay only (TURN allocation)</td></tr>
      *   <tr><td>{@code combined}</td><td>STUN + TURN servers</td><td>Host + srflx + relay</td></tr>
+     *   <tr><td>{@code flags}</td><td>STUN server</td><td>Host + srflx with port range (10000–10050) and DISABLE_RELAY</td></tr>
      * </table>
      */
     private static Configuration buildConfig(String mode) {
@@ -302,9 +309,16 @@ public class TrickleIceDemo {
                 cfg.addIceServer(STUN_SERVER);
                 cfg.addIceServer(TURN_SERVER, TURN_USER, TURN_CREDENTIAL);
                 break;
+            case "flags":
+                // Port range + allocator flags: restrict candidates to port range 10000-10050,
+                // disable relay candidates (bit 2 = DISABLE_RELAY).
+                cfg.addIceServer(STUN_SERVER);
+                cfg.setPortRange(10000, 10050);
+                cfg.setAllocatorFlags(PortAllocatorFlags.DISABLE_RELAY);
+                break;
             default:
                 System.err.println("Unknown mode: " + mode);
-                System.err.println("Valid modes: host, srflx, relay, combined");
+                System.err.println("Valid modes: host, srflx, relay, combined, flags");
                 System.exit(1);
         }
         return cfg;
@@ -336,6 +350,14 @@ public class TrickleIceDemo {
                 System.out.println("  Candidates:  host + srflx + relay (all types)");
                 System.out.println("  Use case:    production — try host first, fall back to srflx, then relay");
                 System.out.println("  Note:        ICE automatically selects the best candidate pair");
+                break;
+            case "flags":
+                System.out.println("  ICE servers: " + STUN_SERVER);
+                System.out.println("  Candidates:  host + srflx (relay disabled via flags)");
+                System.out.println("  Port range:  10000-10050 (PortAllocatorFlags)");
+                System.out.println("  Flags:       DISABLE_RELAY (" + PortAllocatorFlags.DISABLE_RELAY + ")");
+                System.out.println("  Use case:    restrict candidate gathering to specific port range");
+                System.out.println("  Note:        demonstrates Configuration.setPortRange + setAllocatorFlags");
                 break;
         }
     }

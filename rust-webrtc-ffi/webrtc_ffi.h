@@ -75,6 +75,36 @@ int webrtc_ffi_config_add_ice_server(void *cfg,
 void webrtc_ffi_config_free(void *cfg);
 
 /**
+ * Set the UDP/TCP port range for candidate gathering.
+ *
+ * - `min_port` / `max_port`: inclusive port bounds. Pass 0 for either to leave
+ *   unspecified (uses native defaults). If both are non-zero, `min_port` must be
+ *   <= `max_port`.
+ */
+int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port);
+
+/**
+ * Set the port allocator flags (bitwise OR of PortAllocatorFlags constants).
+ *
+ * Flags control which candidate types are gathered:
+ * - bit 0 (1): PORTALLOCATOR_DISABLE_UDP
+ * - bit 1 (2): PORTALLOCATOR_DISABLE_STUN
+ * - bit 2 (4): PORTALLOCATOR_DISABLE_RELAY
+ * - bit 3 (8): PORTALLOCATOR_DISABLE_TCP
+ * - bit 4 (16): PORTALLOCATOR_ENABLE_IPV6
+ * - bit 5 (32): PORTALLOCATOR_ENABLE_SHARED_SOCKET
+ * - bit 6 (64): PORTALLOCATOR_ENABLE_STUN_RETRANSMIT_ATTRIBUTE
+ * - bit 7 (128): PORTALLOCATOR_DISABLE_ADAPTER_ENUMERATION
+ * - bit 8 (256): PORTALLOCATOR_DISABLE_DEFAULT_LOCAL_CANDIDATE
+ * - bit 9 (512): PORTALLOCATOR_DISABLE_UDP_RELAY
+ * - bit 10 (1024): PORTALLOCATOR_DISABLE_COSTLY_NETWORKS
+ * - bit 11 (2048): PORTALLOCATOR_ENABLE_IPV6_ON_WIFI
+ * - bit 12 (4096): PORTALLOCATOR_ENABLE_ANY_ADDRESS_PORTS
+ * - bit 13 (8192): PORTALLOCATOR_DISABLE_LINK_LOCAL_NETWORKS
+ */
+int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags);
+
+/**
  * Create a peer connection. `user_data` is echoed back to every callback.
  * Returns an opaque handle (or null on failure).
  */

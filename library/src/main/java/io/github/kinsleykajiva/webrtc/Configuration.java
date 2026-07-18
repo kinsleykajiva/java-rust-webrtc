@@ -87,6 +87,48 @@ public final class Configuration implements AutoCloseable {
         return setTransport(null, null, 0, networkTypes);
     }
 
+    /**
+     * Sets the UDP/TCP port range for ICE candidate gathering.
+     *
+     * <p>When both values are non-zero, {@code minPort} must be &lt;= {@code maxPort}.
+     * A value of 0 for either leaves the native default (ephemeral ports).</p>
+     *
+     * @param minPort minimum port (inclusive), or 0 for unspecified
+     * @param maxPort maximum port (inclusive), or 0 for unspecified
+     * @throws IllegalArgumentException if minPort &gt; maxPort (when both non-zero)
+     */
+    public Configuration setPortRange(int minPort, int maxPort) {
+        checkClosed();
+        int rc = webrtc_ffi_h.webrtc_ffi_config_set_port_range(handle, minPort, maxPort);
+        if (rc == -2) {
+            throw new IllegalArgumentException("minPort (" + minPort + ") must be <= maxPort (" + maxPort + ")");
+        }
+        if (rc != 0) {
+            throw new IllegalStateException("Failed to set port range: " + rc);
+        }
+        return this;
+    }
+
+    /**
+     * Sets the port allocator flags controlling which ICE candidate types are gathered.
+     *
+     * <p>Use bitwise OR to combine multiple {@link PortAllocatorFlags} constants:</p>
+     * <pre>{@code
+     * cfg.setAllocatorFlags(PortAllocatorFlags.DISABLE_RELAY | PortAllocatorFlags.DISABLE_TCP);
+     * }</pre>
+     *
+     * @param flags bitwise OR of {@link PortAllocatorFlags} constants, or 0 for defaults
+     * @see PortAllocatorFlags
+     */
+    public Configuration setAllocatorFlags(int flags) {
+        checkClosed();
+        int rc = webrtc_ffi_h.webrtc_ffi_config_set_allocator_flags(handle, flags);
+        if (rc != 0) {
+            throw new IllegalStateException("Failed to set allocator flags: " + rc);
+        }
+        return this;
+    }
+
     private static MemorySegment str(Arena arena, String s) {
         if (s == null) {
             return MemorySegment.NULL;

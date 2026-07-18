@@ -385,6 +385,129 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
         }
     }
 
+    private static class webrtc_ffi_config_set_port_range {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_config_set_port_range");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_config_set_port_range$descriptor() {
+        return webrtc_ffi_config_set_port_range.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_config_set_port_range$handle() {
+        return webrtc_ffi_config_set_port_range.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_config_set_port_range$address() {
+        return webrtc_ffi_config_set_port_range.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port)
+     * }
+     */
+    public static int webrtc_ffi_config_set_port_range(MemorySegment cfg, int min_port, int max_port) {
+        var mh$ = webrtc_ffi_config_set_port_range.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_config_set_port_range", cfg, min_port, max_port);
+            }
+            return (int)mh$.invokeExact(cfg, min_port, max_port);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_config_set_allocator_flags {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_config_set_allocator_flags");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_config_set_allocator_flags$descriptor() {
+        return webrtc_ffi_config_set_allocator_flags.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_config_set_allocator_flags$handle() {
+        return webrtc_ffi_config_set_allocator_flags.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_config_set_allocator_flags$address() {
+        return webrtc_ffi_config_set_allocator_flags.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags)
+     * }
+     */
+    public static int webrtc_ffi_config_set_allocator_flags(MemorySegment cfg, int flags) {
+        var mh$ = webrtc_ffi_config_set_allocator_flags.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_config_set_allocator_flags", cfg, flags);
+            }
+            return (int)mh$.invokeExact(cfg, flags);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
     private static class webrtc_ffi_peer_create {
         public static final FunctionDescriptor DESC = FunctionDescriptor.of(
             webrtc_ffi_h.C_POINTER,

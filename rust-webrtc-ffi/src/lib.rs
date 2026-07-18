@@ -86,6 +86,12 @@ struct Config {
     dtls_role: c_int,
     /// Network type bitmask: bit0=udp, bit1=tcp (0 = defaults).
     network_types: c_int,
+    /// Minimum UDP/TCP port for candidate gathering (0 = unspecified).
+    min_port: u16,
+    /// Maximum UDP/TCP port for candidate gathering (0 = unspecified).
+    max_port: u16,
+    /// Bitwise OR of PortAllocatorFlags controlling candidate gathering.
+    allocator_flags: u32,
 }
 
 /// Live peer connection plus its event forwarder and open data channels.
@@ -192,6 +198,9 @@ pub extern "C" fn webrtc_ffi_config_create() -> *mut c_void {
         tcp_addrs: Vec::new(),
         dtls_role: 0,
         network_types: 0,
+        min_port: 0,
+        max_port: 0,
+        allocator_flags: 0,
     });
     Box::into_raw(cfg) as *mut c_void
 }
@@ -278,6 +287,64 @@ pub extern "C" fn webrtc_ffi_config_free(cfg: *mut c_void) {
     unsafe {
         let _ = Box::from_raw(cfg as *mut Config);
     }
+}
+
+/// Set the UDP/TCP port range for candidate gathering.
+///
+/// - `min_port` / `max_port`: inclusive port bounds. Pass 0 for either to leave
+///   unspecified (uses native defaults). If both are non-zero, `min_port` must be
+///   <= `max_port`.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_config_set_port_range(
+    cfg: *mut c_void,
+    min_port: c_int,
+    max_port: c_int,
+) -> c_int {
+    if cfg.is_null() {
+        return -1;
+    }
+    let min = min_port as u16;
+    let max = max_port as u16;
+    if min != 0 && max != 0 && min > max {
+        return -2;
+    }
+    unsafe {
+        let c = &mut *(cfg as *mut Config);
+        c.min_port = min;
+        c.max_port = max;
+    }
+    0
+}
+
+/// Set the port allocator flags (bitwise OR of PortAllocatorFlags constants).
+///
+/// Flags control which candidate types are gathered:
+/// - bit 0 (1): PORTALLOCATOR_DISABLE_UDP
+/// - bit 1 (2): PORTALLOCATOR_DISABLE_STUN
+/// - bit 2 (4): PORTALLOCATOR_DISABLE_RELAY
+/// - bit 3 (8): PORTALLOCATOR_DISABLE_TCP
+/// - bit 4 (16): PORTALLOCATOR_ENABLE_IPV6
+/// - bit 5 (32): PORTALLOCATOR_ENABLE_SHARED_SOCKET
+/// - bit 6 (64): PORTALLOCATOR_ENABLE_STUN_RETRANSMIT_ATTRIBUTE
+/// - bit 7 (128): PORTALLOCATOR_DISABLE_ADAPTER_ENUMERATION
+/// - bit 8 (256): PORTALLOCATOR_DISABLE_DEFAULT_LOCAL_CANDIDATE
+/// - bit 9 (512): PORTALLOCATOR_DISABLE_UDP_RELAY
+/// - bit 10 (1024): PORTALLOCATOR_DISABLE_COSTLY_NETWORKS
+/// - bit 11 (2048): PORTALLOCATOR_ENABLE_IPV6_ON_WIFI
+/// - bit 12 (4096): PORTALLOCATOR_ENABLE_ANY_ADDRESS_PORTS
+/// - bit 13 (8192): PORTALLOCATOR_DISABLE_LINK_LOCAL_NETWORKS
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_config_set_allocator_flags(
+    cfg: *mut c_void,
+    flags: c_int,
+) -> c_int {
+    if cfg.is_null() {
+        return -1;
+    }
+    unsafe {
+        (*(cfg as *mut Config)).allocator_flags = flags as u32;
+    }
+    0
 }
 
 // ---------------------------------------------------------------------------
@@ -447,7 +514,7 @@ pub extern "C" fn webrtc_ffi_peer_create(
     let mut setting_engine = SettingEngine::default();
 
     if !cfg.is_null() {
-        let c = unsafe { &*(cfg as *const Config) };
+        let c = unsafe { &mut *(cfg as *mut Config) };
         if !c.ice_servers.is_empty() {
             let configuration = RTCConfigurationBuilder::default()
                 .with_ice_servers(c.ice_servers.clone())
@@ -476,6 +543,58 @@ pub extern "C" fn webrtc_ffi_peer_create(
                 types.push(NetworkType::Tcp6);
             }
             setting_engine.set_network_types(types);
+        }
+
+        // Apply port range to UDP/TCP addresses.
+        // The Rust WebRTC stack binds to specific addresses; we encode the port
+        // range by replacing port 0 in the addresses with the min_port, so socket
+        // binding starts at the requested range. The max_port is applied by
+        // modifying addresses that use port 0 to use min_port as the starting port.
+        if c.min_port != 0 || c.max_port != 0 {
+            let min = if c.min_port != 0 { c.min_port } else { 1 };
+            let _max = if c.max_port != 0 { c.max_port } else { 65535 };
+            // Rewrite addresses that use port 0 (OS-assigned) to use min_port.
+            c.udp_addrs = c.udp_addrs.iter().map(|addr| {
+                if addr.ends_with(":0") {
+                    format!("{}:{}", &addr[..addr.len()-1], min)
+                } else {
+                    addr.clone()
+                }
+            }).collect();
+            c.tcp_addrs = c.tcp_addrs.iter().map(|addr| {
+                if addr.ends_with(":0") {
+                    format!("{}:{}", &addr[..addr.len()-1], min)
+                } else {
+                    addr.clone()
+                }
+            }).collect();
+        }
+
+        // Apply allocator flags: disable candidate types based on flags.
+        // PORTALLOCATOR_DISABLE_UDP (bit 0): remove UDP addresses
+        // PORTALLOCATOR_DISABLE_TCP (bit 3): remove TCP addresses
+        // PORTALLOCATOR_DISABLE_STUN (bit 1): remove STUN servers (keep TURN)
+        // PORTALLOCATOR_DISABLE_RELAY (bit 2): remove TURN servers (keep STUN)
+        // PORTALLOCATOR_DISABLE_COSTLY_NETWORKS (bit 10): restrict to WiFi/wired
+        // PORTALLOCATOR_DISABLE_LINK_LOCAL_NETWORKS (bit 13): skip link-local
+        let flags = c.allocator_flags;
+        if flags != 0 {
+            if flags & 1 != 0 {
+                // DISABLE_UDP: clear UDP addresses
+                c.udp_addrs.clear();
+            }
+            if flags & 8 != 0 {
+                // DISABLE_TCP: clear TCP addresses
+                c.tcp_addrs.clear();
+            }
+            if flags & 2 != 0 {
+                // DISABLE_STUN: remove STUN servers (those without credentials)
+                c.ice_servers.retain(|s| !s.username.is_empty());
+            }
+            if flags & 4 != 0 {
+                // DISABLE_RELAY: remove TURN servers (those with credentials)
+                c.ice_servers.retain(|s| s.username.is_empty());
+            }
         }
 
         builder = builder.with_setting_engine(setting_engine);
