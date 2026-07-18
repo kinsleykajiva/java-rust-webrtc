@@ -10,6 +10,8 @@ io\github\kinsleykajiva\IceTcpActivePassiveDemo$2.class
 io\github\kinsleykajiva\Main.class
 io\github\kinsleykajiva\StatsDemo.class
 io\github\kinsleykajiva\PlayFromDiskVpxDemo$1.class
+io\github\kinsleykajiva\TrickleIceDemo.class
+io\github\kinsleykajiva\TrickleIceDemo$1.class
 io\github\kinsleykajiva\StatsDemo$2.class
 io\github\kinsleykajiva\AudioTranscoderDemo$CodecInfo.class
 io\github\kinsleykajiva\AudioTranscoderDemo$4.class
@@ -29,6 +31,7 @@ io\github\kinsleykajiva\AudioTranscoderDemo$1.class
 io\github\kinsleykajiva\IceTcpActivePassiveDemo$1.class
 io\github\kinsleykajiva\IceTcpDemo$1.class
 io\github\kinsleykajiva\SupportedCodecs.class
+io\github\kinsleykajiva\TrickleIceDemo$2.class
 io\github\kinsleykajiva\IceTcpActivePassiveDemo.class
 io\github\kinsleykajiva\StatsDemo$1.class
 io\github\kinsleykajiva\PlayFromDiskRenegotiationDemo.class

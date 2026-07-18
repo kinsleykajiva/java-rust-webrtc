@@ -32,8 +32,8 @@ public final class PeerConnection implements AutoCloseable {
         /** The remote peer created a data channel. */
         default void onDataChannel(int id, String label) {}
 
-        /** ICE gathering state changed (0=new, 1=gathering, 2=complete). */
-        default void onIceGatheringStateChange(int state) {}
+        /** ICE gathering state changed. */
+        default void onIceGatheringStateChange(IceGatheringState state) {}
 
         /** A remote track was received. */
         default void onTrack(int trackId, String label) {}
@@ -138,7 +138,7 @@ public final class PeerConnection implements AutoCloseable {
     private static void gatheringCb(MemorySegment userData, int state) {
         Observer obs = OBSERVERS.get(userData.address());
         if (obs != null) {
-            obs.onIceGatheringStateChange(state);
+            obs.onIceGatheringStateChange(IceGatheringState.fromValue(state));
         }
     }
 
