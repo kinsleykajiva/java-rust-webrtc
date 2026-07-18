@@ -279,7 +279,8 @@ uint32_t webrtc_ffi_create_track_local(const char *stream_id,
 
 /**
  * Add a local track to a peer connection. Returns a sender handle id (>= 1)
- * on success, negative on error.
+ * on success, negative on error. Looks up the track in both sample and RTP
+ * track registries.
  */
 int webrtc_ffi_add_track(void *peer, uint32_t track_id);
 
@@ -324,5 +325,33 @@ int webrtc_ffi_sender_get_payload_type(uint32_t sender_id);
  * Returns a NUL-terminated C string the caller must free.
  */
 char *webrtc_ffi_sender_get_codec(uint32_t sender_id);
+
+/**
+ * Create a local RTP track for sending pre-packetized RTP packets. Returns a
+ * track handle id (u32) on success, 0 on failure.
+ *
+ * - `stream_id`, `track_id`, `label`: metadata strings
+ * - `kind`: 1=audio, 2=video
+ * - `ssrc`: synchronization source identifier (packets are rewritten with this SSRC)
+ * - `mime_type`: e.g. "video/VP8"
+ * - `clock_rate`: e.g. 90000 for video
+ */
+uint32_t webrtc_ffi_create_track_local_rtp(const char *stream_id,
+                                           const char *track_id,
+                                           const char *label,
+                                           int kind,
+                                           uint32_t ssrc,
+                                           const char *mime_type,
+                                           uint32_t clock_rate);
+
+/**
+ * Write a raw RTP packet to an RTP track. The packet bytes are parsed,
+ * the SSRC is rewritten to match the track's SSRC, and the packet is
+ * forwarded to the peer connection.
+ *
+ * - `track_id`: handle from `webrtc_ffi_create_track_local_rtp`
+ * - `data` / `len`: raw RTP packet bytes (full packet including header)
+ */
+int webrtc_ffi_write_rtp(uint32_t track_id, const uint8_t *data, uintptr_t len);
 
 #endif /* WEBRTC_FFI_H */

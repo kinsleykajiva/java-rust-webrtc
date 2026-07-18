@@ -24,12 +24,15 @@ use webrtc::data_channel::{DataChannelEvent, RTCDataChannelInit};
 use webrtc::media_stream::track_remote::{TrackRemote, TrackRemoteEvent};
 use webrtc::media_stream::track_local::TrackLocal;
 use webrtc::media_stream::track_local::static_sample::TrackLocalStaticSample;
+use webrtc::media_stream::track_local::static_rtp::TrackLocalStaticRTP;
 use webrtc::media_stream::MediaStreamTrack;
 use webrtc::rtp_transceiver::RtpSender;
 use rtc::media::Sample;
+use rtc::rtp;
 use rtc::rtp_transceiver::rtp_sender::{
     RTCRtpCodec, RTCRtpCodingParameters, RTCRtpEncodingParameters,
 };
+use rtc::shared::marshal::Unmarshal;
 
 use rtc::peer_connection::configuration::RTCIceServer;
 use rtc::peer_connection::configuration::RTCOfferOptions;
@@ -1293,19 +1296,32 @@ pub extern "C" fn webrtc_ffi_create_track_local(
 }
 
 /// Add a local track to a peer connection. Returns a sender handle id (>= 1)
-/// on success, negative on error.
+/// on success, negative on error. Looks up the track in both sample and RTP
+/// track registries.
 #[no_mangle]
 pub extern "C" fn webrtc_ffi_add_track(peer: *mut c_void, track_id: u32) -> c_int {
     if peer.is_null() {
         return -1;
     }
-    let track = LOCAL_TRACKS.lock().unwrap().get(&track_id).cloned();
-    let track = match track {
+    // Try sample tracks first, then RTP tracks.
+    let track_arc: Option<Arc<dyn TrackLocal>> = LOCAL_TRACKS
+        .lock()
+        .unwrap()
+        .get(&track_id)
+        .map(|t| t.clone() as Arc<dyn TrackLocal>)
+        .or_else(|| {
+            LOCAL_RTP_TRACKS
+                .lock()
+                .unwrap()
+                .get(&track_id)
+                .map(|(_, t)| t.clone() as Arc<dyn TrackLocal>)
+        });
+    let track = match track_arc {
         Some(t) => t,
         None => return -2,
     };
     let p = unsafe { &*(peer as *const Peer) };
-    match block_on(p.pc.add_track(track as Arc<dyn TrackLocal>)) {
+    match block_on(p.pc.add_track(track)) {
         Ok(sender) => register_sender(sender) as c_int,
         Err(_) => -3,
     }
@@ -1428,4 +1444,101 @@ pub extern "C" fn webrtc_ffi_sender_get_codec(sender_id: u32) -> *mut c_char {
         })
     });
     unsafe { into_cstring(result.unwrap_or_default()) }
+}
+
+// ---------------------------------------------------------------------------
+// RTP track (TrackLocalStaticRTP) for raw RTP packet forwarding
+// ---------------------------------------------------------------------------
+
+static LOCAL_RTP_TRACK_ID_COUNTER: Lazy<Mutex<u32>> = Lazy::new(|| Mutex::new(10000));
+static LOCAL_RTP_TRACKS: Lazy<Mutex<HashMap<u32, (u32, Arc<TrackLocalStaticRTP>)>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Create a local RTP track for sending pre-packetized RTP packets. Returns a
+/// track handle id (u32) on success, 0 on failure.
+///
+/// - `stream_id`, `track_id`, `label`: metadata strings
+/// - `kind`: 1=audio, 2=video
+/// - `ssrc`: synchronization source identifier (packets are rewritten with this SSRC)
+/// - `mime_type`: e.g. "video/VP8"
+/// - `clock_rate`: e.g. 90000 for video
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_create_track_local_rtp(
+    stream_id: *const c_char,
+    track_id: *const c_char,
+    label: *const c_char,
+    kind: c_int,
+    ssrc: u32,
+    mime_type: *const c_char,
+    clock_rate: u32,
+) -> u32 {
+    let codec_kind = match kind {
+        1 => RtpCodecKind::Audio,
+        2 => RtpCodecKind::Video,
+        _ => return 0,
+    };
+    let codec = RTCRtpCodec {
+        mime_type: read_str(mime_type).to_string(),
+        clock_rate,
+        channels: 0,
+        sdp_fmtp_line: String::new(),
+        rtcp_feedback: vec![],
+    };
+    let encoding = RTCRtpEncodingParameters {
+        rtp_coding_parameters: RTCRtpCodingParameters {
+            ssrc: Some(ssrc),
+            ..Default::default()
+        },
+        codec,
+        ..Default::default()
+    };
+    let track_metadata = MediaStreamTrack::new(
+        read_str(stream_id).to_string(),
+        read_str(track_id).to_string(),
+        read_str(label).to_string(),
+        codec_kind,
+        vec![encoding],
+    );
+    let track = TrackLocalStaticRTP::new(track_metadata);
+    let mut counter = LOCAL_RTP_TRACK_ID_COUNTER.lock().unwrap();
+    let id = *counter;
+    *counter += 1;
+    LOCAL_RTP_TRACKS.lock().unwrap().insert(id, (ssrc, Arc::new(track)));
+    id
+}
+
+/// Write a raw RTP packet to an RTP track. The packet bytes are parsed,
+/// the SSRC is rewritten to match the track's SSRC, and the packet is
+/// forwarded to the peer connection.
+///
+/// - `track_id`: handle from `webrtc_ffi_create_track_local_rtp`
+/// - `data` / `len`: raw RTP packet bytes (full packet including header)
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_write_rtp(
+    track_id: u32,
+    data: *const u8,
+    len: usize,
+) -> c_int {
+    if data.is_null() || len == 0 {
+        return -1;
+    }
+    let track = LOCAL_RTP_TRACKS.lock().unwrap().get(&track_id).cloned();
+    let (track_ssrc, track) = match track {
+        Some(t) => t,
+        None => return -2,
+    };
+    let bytes = unsafe { std::slice::from_raw_parts(data, len) };
+    let mut buf = bytes::BytesMut::from(bytes);
+    let mut packet = match rtp::packet::Packet::unmarshal(&mut buf) {
+        Ok(p) => p,
+        Err(_) => return -3,
+    };
+    // Rewrite SSRC to match the track's configured SSRC.
+    if track_ssrc != 0 {
+        packet.header.ssrc = track_ssrc;
+    }
+    match block_on(track.write_rtp(packet)) {
+        Ok(()) => 0,
+        Err(_) => -4,
+    }
 }

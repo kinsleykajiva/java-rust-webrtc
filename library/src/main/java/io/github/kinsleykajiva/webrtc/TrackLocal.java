@@ -96,6 +96,56 @@ public final class TrackLocal {
         }
     }
 
+    /**
+     * Creates a local RTP track for sending pre-packetized RTP packets.
+     *
+     * @param kind      audio or video
+     * @param streamId  media stream identifier
+     * @param trackId   track identifier
+     * @param label     human-readable label
+     * @param ssrc      synchronization source id (use 0 for random)
+     * @param mimeType  e.g. "video/VP8", "video/H264"
+     * @param clockRate e.g. 90000 for video
+     * @return the new RTP track, or {@code null} on failure
+     */
+    public static TrackLocal createRtpTrack(
+            MediaKind kind,
+            String streamId,
+            String trackId,
+            String label,
+            int ssrc,
+            String mimeType,
+            int clockRate) {
+        if (ssrc == 0) {
+            ssrc = ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);
+        }
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment sId = arena.allocateFrom(streamId);
+            MemorySegment tId = arena.allocateFrom(trackId);
+            MemorySegment lbl = arena.allocateFrom(label);
+            MemorySegment mime = arena.allocateFrom(mimeType);
+            int handle = webrtc_ffi_h.webrtc_ffi_create_track_local_rtp(
+                    sId, tId, lbl, kind.value, ssrc, mime, clockRate);
+            if (handle == 0) {
+                return null;
+            }
+            return new TrackLocal(handle, ssrc);
+        }
+    }
+
+    /**
+     * Writes a raw RTP packet to this track. The packet is parsed, the SSRC is
+     * rewritten to match the track's configured SSRC, and forwarded.
+     *
+     * @param data raw RTP packet bytes (full packet including header)
+     */
+    public void writeRtp(byte[] data) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, data);
+            webrtc_ffi_h.webrtc_ffi_write_rtp(nativeTrackId, seg, data.length);
+        }
+    }
+
     /** Returns a random SSRC value suitable for track creation. */
     public static int randomSsrc() {
         return ThreadLocalRandom.current().nextInt(1, Integer.MAX_VALUE);

@@ -145,6 +145,10 @@
                                 <argument>webrtc_ffi_sender_get_payload_type</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_sender_get_codec</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_create_track_local_rtp</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_write_rtp</argument>
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>

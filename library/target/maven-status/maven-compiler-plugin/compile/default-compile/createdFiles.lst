@@ -14,6 +14,7 @@ io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h.class
 io\github\kinsleykajiva\webrtc\IvfReader$IvfFileHeader.class
 io\github\kinsleykajiva\webrtc\StatsReport.class
 io\github\kinsleykajiva\webrtc\OggReader$OggPage.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_track_local_rtp.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_create.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_description_free.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_supported_codecs.class
@@ -61,6 +62,7 @@ io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_track_remote_kind.cla
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_add_transceiver.class
 io\github\kinsleykajiva\webrtc\PeerConnectionState.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_add_transceiver_from_kind.class
+io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_write_rtp.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_offer.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_open$Function.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_track_remote_id.class
