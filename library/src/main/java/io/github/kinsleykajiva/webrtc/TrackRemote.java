@@ -13,6 +13,17 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Represents a remote media track received from a peer connection.
+ *
+ * <p>Obtained via the {@link PeerConnection.Observer#onTrack(int, String)} callback.
+ * The track ID returned by that callback can be used to retrieve the track via
+ * {@link #get(int)} and query its properties (SSRCs, codec, kind, RID) or register
+ * RTP / open callbacks for incoming media data.</p>
+ *
+ * <p>The MIME type and codec information can be queried via {@link #getCodec()} and
+ * compared against {@link MimeTypes} constants.</p>
+ */
 public final class TrackRemote {
 
     public interface RtpCallback {

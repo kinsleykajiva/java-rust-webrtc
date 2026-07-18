@@ -5,6 +5,30 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * Reads IVF (Indeo Video Format) containers and returns individual video frames.
+ *
+ * <p>IVF is the standard container for VP8, VP9, and AV1 raw frame data used in WebRTC.
+ * The file starts with a 32-byte header describing width, height, frame rate, and frame count.
+ * Each frame is preceded by a 12-byte entry (4-byte size + 8-byte timestamp).</p>
+ *
+ * <h3>Content</h3>
+ * <ul>
+ *   <li>VP8: {@link MimeTypes#CONTENT_VP8} ({@code demo-content/output_vp8.ivf})</li>
+ *   <li>VP9: {@link MimeTypes#CONTENT_VP9} ({@code demo-content/output_vp9.ivf})</li>
+ *   <li>AV1: generate with {@code ffmpeg -i input.mp4 -c:v libaom-av1 -crf 30 output.ivf}</li>
+ * </ul>
+ *
+ * <h3>Example</h3>
+ * <pre>{@code
+ * try (var reader = new IvfReader(new FileInputStream(MimeTypes.CONTENT_VP8))) {
+ *     IvfReader.IvfFrame frame;
+ *     while ((frame = reader.nextFrame()) != null) {
+ *         track.writeSample(payloadType, frame.data(), 33);
+ *     }
+ * }
+ * }</pre>
+ */
 public final class IvfReader implements AutoCloseable {
 
     private static final int FILE_HEADER_SIZE = 32;

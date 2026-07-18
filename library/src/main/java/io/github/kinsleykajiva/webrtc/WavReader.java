@@ -5,6 +5,29 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.EOFException;
 
+/**
+ * Reads RIFF WAVE files with PCM audio (audio format 1) and returns raw sample data.
+ *
+ * <p>Parses the {@code fmt } chunk for channel count, sample rate, and bits per sample,
+ * then streams the {@code data} chunk in arbitrary-size chunks via {@link #nextSamples(int)}.</p>
+ *
+ * <h3>Content</h3>
+ * <p>No bundled sample. Generate with:</p>
+ * <pre>
+ * ffmpeg -i input.ogg -c:a pcm_s16le -ar 48000 demo-content/output.wav
+ * </pre>
+ *
+ * <h3>Example</h3>
+ * <pre>{@code
+ * try (var reader = new WavReader(new FileInputStream("demo-content/output.wav"))) {
+ *     WavReader.WavHeader hdr = reader.header();
+ *     byte[] samples;
+ *     while (!(samples = reader.nextSamples(4096)).isEmpty()) {
+ *         // samples contains raw PCM bytes
+ *     }
+ * }
+ * }</pre>
+ */
 public final class WavReader implements AutoCloseable {
 
     public record WavHeader(int channels, int sampleRate, int bitsPerSample) {}

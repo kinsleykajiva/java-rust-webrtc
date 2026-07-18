@@ -5,6 +5,28 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * Reads OGG containers with Opus audio and returns individual Opus frames.
+ *
+ * <p>Parses the {@code OpusHead} header to extract channel count, sample rate, and
+ * pre-skip, then yields each subsequent OGG page payload as an {@link OggPage}.</p>
+ *
+ * <h3>Content</h3>
+ * <ul>
+ *   <li>{@link MimeTypes#CONTENT_OPUS} ({@code demo-content/output.ogg})</li>
+ *   <li>{@link MimeTypes#CONTENT_PLAYLIST} ({@code demo-content/playlist.ogg})</li>
+ * </ul>
+ *
+ * <h3>Example</h3>
+ * <pre>{@code
+ * try (var reader = new OggReader(new FileInputStream(MimeTypes.CONTENT_OPUS))) {
+ *     OggReader.OggPage page;
+ *     while ((page = reader.nextPage()) != null) {
+ *         track.writeSample(payloadType, page.data(), 20);
+ *     }
+ * }
+ * }</pre>
+ */
 public final class OggReader implements AutoCloseable {
 
     public record OggHeader(int channels, int sampleRate, int preSkip) {}

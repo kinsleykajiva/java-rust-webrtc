@@ -3,8 +3,11 @@ package io.github.kinsleykajiva.webrtc;
 /**
  * Describes a single RTP codec supported by the underlying native WebRTC implementation.
  *
+ * <p>Retrieve the list of all registered codecs via {@link WebRtc#listSupportedCodecs()}.
+ * Use {@link MimeTypes} constants for the {@code mimeType} field values.</p>
+ *
  * @param kind        {@code audio} or {@code video}
- * @param mimeType    IANA media subtype, e.g. {@code audio/opus} or {@code video/vp8}
+ * @param mimeType    IANA media subtype, e.g. {@link MimeTypes#AUDIO_OPUS} or {@link MimeTypes#VIDEO_VP8}
  * @param clockRate   RTP clock rate in Hz
  * @param channels    number of audio channels (0 for video codecs)
  * @param payloadType static RTP payload type assigned by the media engine

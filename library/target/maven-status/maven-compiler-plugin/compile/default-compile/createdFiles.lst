@@ -64,6 +64,7 @@ io\github\kinsleykajiva\webrtc\PeerConnectionState.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_add_transceiver_from_kind.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_write_rtp.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_create_offer.class
+io\github\kinsleykajiva\webrtc\MimeTypes.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_open$Function.class
 io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$webrtc_ffi_track_remote_id.class
 io\github\kinsleykajiva\webrtc\IceGatheringState.class

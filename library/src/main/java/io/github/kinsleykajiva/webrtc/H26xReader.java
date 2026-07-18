@@ -11,6 +11,22 @@ import java.io.InputStream;
  * next VCL access unit. Each call to {@link #nextSample()} returns one access unit
  * together with a flag indicating whether the sample contains timing-relevant data
  * (VCL NAL units) and should be paced.</p>
+ *
+ * <h3>Content</h3>
+ * <ul>
+ *   <li>H.264: {@link MimeTypes#CONTENT_H264} — raw Annex B bitstream, construct with {@code isHevc=false}</li>
+ *   <li>H.265: {@link MimeTypes#CONTENT_H265} — raw Annex B bitstream, construct with {@code isHevc=true}</li>
+ * </ul>
+ *
+ * <h3>Example</h3>
+ * <pre>{@code
+ * try (var reader = new H26xReader(new FileInputStream(MimeTypes.CONTENT_H264), 1024*1024, false)) {
+ *     H26xReader.H26xSample sample;
+ *     while ((sample = reader.nextSample()) != null) {
+ *         track.writeSample(payloadType, sample.data(), 33);
+ *     }
+ * }
+ * }</pre>
  */
 public final class H26xReader implements AutoCloseable {
 

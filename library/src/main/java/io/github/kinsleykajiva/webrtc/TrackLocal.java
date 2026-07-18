@@ -9,8 +9,39 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * A local media track for sending samples (audio or video) over a {@link PeerConnection}.
  *
- * <p>Created via {@link #create(MediaKind, String, String, String, int, String, int, int, String)},
- * added via {@link PeerConnection#addTrack(TrackLocal)}, and written to via {@link #writeSample}.</p>
+ * <p>Created via {@link #create(MediaKind, String, String, String, int, String, int, int, String)}
+ * for codec-based sample writing, or {@link #createRtpTrack(MediaKind, String, String, String, int, String, int)}
+ * for raw RTP packet forwarding. Added via {@link PeerConnection#addTrack(TrackLocal)},
+ * written to via {@link #writeSample} or {@link #writeRtp}.</p>
+ *
+ * <h3>Content</h3>
+ * <p>See {@link MimeTypes} for all supported MIME type constants and demo content file paths.</p>
+ *
+ * <h3>Example — sample track (VP8 from IVF)</h3>
+ * <pre>{@code
+ * int ssrc = TrackLocal.randomSsrc();
+ * TrackLocal track = TrackLocal.create(MediaKind.VIDEO, "stream", "vp8", "VP8",
+ *     ssrc, MimeTypes.VIDEO_VP8, 90000, 0, "");
+ * peerConnection.addTrack(track);
+ * // ... after SDP exchange ...
+ * try (var reader = new IvfReader(new FileInputStream(MimeTypes.CONTENT_VP8))) {
+ *     IvfReader.IvfFrame frame;
+ *     while ((frame = reader.nextFrame()) != null) {
+ *         track.writeSample(negotiatedPt, frame.data(), 33);
+ *     }
+ * }
+ * }</pre>
+ *
+ * <h3>Example — RTP track (raw packets from external source)</h3>
+ * <pre>{@code
+ * int ssrc = TrackLocal.randomSsrc();
+ * TrackLocal track = TrackLocal.createRtpTrack(MediaKind.VIDEO, "rtp-stream", "video",
+ *     "External RTP", ssrc, MimeTypes.VIDEO_VP8, 90000);
+ * peerConnection.addTrack(track);
+ * // ... after SDP exchange ...
+ * byte[] rtpPacket = // raw RTP packet from UDP socket, IP camera, etc.
+ * track.writeRtp(rtpPacket);
+ * }</pre>
  */
 public final class TrackLocal {
 

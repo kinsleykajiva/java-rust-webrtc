@@ -5,6 +5,29 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.EOFException;
 
+/**
+ * Reads MPEG audio (MP3) frame streams and returns individual frames.
+ *
+ * <p>Parses the MP3 frame header to determine bitrate, sample rate, channel mode,
+ * and frame size. Only MPEG-2 Layer III is supported (MPEG-1 is skipped).</p>
+ *
+ * <h3>Content</h3>
+ * <p>No bundled sample. Generate with:</p>
+ * <pre>
+ * ffmpeg -i input.wav -codec:a libmp3lame -b:a 128k demo-content/output.mp3
+ * </pre>
+ *
+ * <h3>Example</h3>
+ * <pre>{@code
+ * try (var reader = new Mp3Reader(new FileInputStream("demo-content/output.mp3"))) {
+ *     Mp3Reader.Mp3Frame frame;
+ *     while ((frame = reader.nextFrame()) != null) {
+ *         // frame.data() contains the raw MPEG audio frame bytes
+ *         // frame.sampleRate() and frame.channels() describe the audio format
+ *     }
+ * }
+ * }</pre>
+ */
 public final class Mp3Reader implements AutoCloseable {
 
     public record Mp3Frame(byte[] data, int sampleRate, int channels, long durationMicros) {}
