@@ -1,0 +1,72 @@
+[workspace]
+members = [
+    "examples",
+    "rtc",
+    "rtc-datachannel",
+    "rtc-dtls",
+    "rtc-ice",
+    "rtc-interceptor",
+    "rtc-interceptor-derive",
+    "rtc-media",
+    "rtc-mdns",
+    "rtc-rtcp",
+    "rtc-rtp",
+    "rtc-sctp",
+    "rtc-sdp",
+    "rtc-shared",
+    "rtc-srtp",
+    "rtc-stun",
+    "rtc-turn",
+]
+resolver = "2"
+
+[profile.dev]
+opt-level = 0
+
+[workspace.package]
+version = "0.20.0-rc.3"
+authors = ["Rain Liu <yliu@webrtc.rs>"]
+edition = "2024"
+license = "MIT/Apache-2.0"
+homepage = "https://webrtc.rs"
+repository = "https://github.com/webrtc-rs/rtc"
+keywords = ["sansio", "networking", "protocols"]
+categories = ["network-programming"]
+
+[workspace.dependencies]
+rtc = { version = "0.20.0-rc.3", path = "rtc" }
+signal = { version = "0.20.0-rc.3", path = "examples/examples/signal", package = "rtc-signal" }
+datachannel = { version = "0.20.0-rc.3", path = "rtc-datachannel", package = "rtc-datachannel" }
+dtls = { version = "0.20.0-rc.3", path = "rtc-dtls", package = "rtc-dtls" }
+ice = { version = "0.20.0-rc.3", path = "rtc-ice", package = "rtc-ice" }
+interceptor = { version = "0.20.0-rc.3", path = "rtc-interceptor", package = "rtc-interceptor" }
+interceptor-derive = { version = "0.20.0-rc.3", path = "rtc-interceptor-derive", package = "rtc-interceptor-derive" }
+mdns = { version = "0.20.0-rc.3", path = "rtc-mdns", package = "rtc-mdns" }
+media = { version = "0.20.0-rc.3", path = "rtc-media", package = "rtc-media" }
+rtcp = { version = "0.20.0-rc.3", path = "rtc-rtcp", package = "rtc-rtcp" }
+rtp = { version = "0.20.0-rc.3", path = "rtc-rtp", package = "rtc-rtp" }
+sctp = { version = "0.20.0-rc.3", path = "rtc-sctp", package = "rtc-sctp" }
+sdp = { version = "0.20.0-rc.3", path = "rtc-sdp", package = "rtc-sdp" }
+shared = { version = "0.20.0-rc.3", path = "rtc-shared", package = "rtc-shared", default-features = false }
+srtp = { version = "0.20.0-rc.3", path = "rtc-srtp", package = "rtc-srtp" }
+stun = { version = "0.20.0-rc.3", path = "rtc-stun", package = "rtc-stun" }
+turn = { version = "0.20.0-rc.3", path = "rtc-turn", package = "rtc-turn" }
+
+# common dependencies
+sansio = "1"
+bytes = "1.12.0"
+byteorder = "1.5.0"
+log = "0.4.33"
+rcgen = { version = "0.14.8", features = ["pem", "x509-parser"] }
+ring = "0.17.14"
+rand = "0.10.1"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = "2.0.18"
+
+# dev dependencies
+env_logger = "0.11.11"
+chrono = "0.4.45"
+clap = { version = "4.6.1", features = ["derive"] }
+ctrlc = "3.5.2"
+criterion = "0.8.2"
+tokio = { version = "1.52.3", features = ["full"] }
