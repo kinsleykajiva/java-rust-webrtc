@@ -392,6 +392,8 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
             webrtc_ffi_h.C_POINTER,
             webrtc_ffi_h.C_POINTER,
             webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_POINTER,
             webrtc_ffi_h.C_POINTER
         );
 
@@ -403,7 +405,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Function descriptor for:
      * {@snippet lang=c :
-     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel)
+     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel, IceGatheringStateCallback on_ice_gathering_state_change, TrackCallback on_track)
      * }
      */
     public static FunctionDescriptor webrtc_ffi_peer_create$descriptor() {
@@ -413,7 +415,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Downcall method handle for:
      * {@snippet lang=c :
-     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel)
+     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel, IceGatheringStateCallback on_ice_gathering_state_change, TrackCallback on_track)
      * }
      */
     public static MethodHandle webrtc_ffi_peer_create$handle() {
@@ -423,7 +425,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Address for:
      * {@snippet lang=c :
-     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel)
+     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel, IceGatheringStateCallback on_ice_gathering_state_change, TrackCallback on_track)
      * }
      */
     public static MemorySegment webrtc_ffi_peer_create$address() {
@@ -432,16 +434,16 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
 
     /**
      * {@snippet lang=c :
-     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel)
+     * void *webrtc_ffi_peer_create(void *cfg, void *user_data, IceCandidateCallback on_ice_candidate, ConnectionStateCallback on_connection_state, DataChannelCallback on_data_channel, IceGatheringStateCallback on_ice_gathering_state_change, TrackCallback on_track)
      * }
      */
-    public static MemorySegment webrtc_ffi_peer_create(MemorySegment cfg, MemorySegment user_data, MemorySegment on_ice_candidate, MemorySegment on_connection_state, MemorySegment on_data_channel) {
+    public static MemorySegment webrtc_ffi_peer_create(MemorySegment cfg, MemorySegment user_data, MemorySegment on_ice_candidate, MemorySegment on_connection_state, MemorySegment on_data_channel, MemorySegment on_ice_gathering_state_change, MemorySegment on_track) {
         var mh$ = webrtc_ffi_peer_create.HANDLE;
         try {
             if (TRACE_DOWNCALLS) {
-                traceDowncall("webrtc_ffi_peer_create", cfg, user_data, on_ice_candidate, on_connection_state, on_data_channel);
+                traceDowncall("webrtc_ffi_peer_create", cfg, user_data, on_ice_candidate, on_connection_state, on_data_channel, on_ice_gathering_state_change, on_track);
             }
-            return (MemorySegment)mh$.invokeExact(cfg, user_data, on_ice_candidate, on_connection_state, on_data_channel);
+            return (MemorySegment)mh$.invokeExact(cfg, user_data, on_ice_candidate, on_connection_state, on_data_channel, on_ice_gathering_state_change, on_track);
         } catch (Error | RuntimeException ex) {
            throw ex;
         } catch (Throwable ex$) {
@@ -1418,6 +1420,612 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
                 traceDowncall("webrtc_ffi_supported_codecs");
             }
             return (MemorySegment)mh$.invokeExact();
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_add_transceiver_from_kind {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_add_transceiver_from_kind");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_add_transceiver_from_kind$descriptor() {
+        return webrtc_ffi_add_transceiver_from_kind.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_add_transceiver_from_kind$handle() {
+        return webrtc_ffi_add_transceiver_from_kind.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_add_transceiver_from_kind$address() {
+        return webrtc_ffi_add_transceiver_from_kind.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction)
+     * }
+     */
+    public static int webrtc_ffi_add_transceiver_from_kind(MemorySegment peer, int kind, int direction) {
+        var mh$ = webrtc_ffi_add_transceiver_from_kind.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_add_transceiver_from_kind", peer, kind, direction);
+            }
+            return (int)mh$.invokeExact(peer, kind, direction);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_get_stats {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_POINTER
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_get_stats");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_get_stats(void *peer)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_get_stats$descriptor() {
+        return webrtc_ffi_get_stats.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_get_stats(void *peer)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_get_stats$handle() {
+        return webrtc_ffi_get_stats.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_get_stats(void *peer)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_get_stats$address() {
+        return webrtc_ffi_get_stats.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_get_stats(void *peer)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_get_stats(MemorySegment peer) {
+        var mh$ = webrtc_ffi_get_stats.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_get_stats", peer);
+            }
+            return (MemorySegment)mh$.invokeExact(peer);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_ssrcs {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_ssrcs");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_ssrcs(uint32_t track_id)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_ssrcs$descriptor() {
+        return webrtc_ffi_track_remote_ssrcs.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_ssrcs(uint32_t track_id)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_ssrcs$handle() {
+        return webrtc_ffi_track_remote_ssrcs.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_ssrcs(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_ssrcs$address() {
+        return webrtc_ffi_track_remote_ssrcs.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_ssrcs(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_ssrcs(int track_id) {
+        var mh$ = webrtc_ffi_track_remote_ssrcs.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_ssrcs", track_id);
+            }
+            return (MemorySegment)mh$.invokeExact(track_id);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_codec {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_codec");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_codec(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_codec$descriptor() {
+        return webrtc_ffi_track_remote_codec.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_codec(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_codec$handle() {
+        return webrtc_ffi_track_remote_codec.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_codec(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_codec$address() {
+        return webrtc_ffi_track_remote_codec.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_codec(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_codec(int track_id, int ssrc) {
+        var mh$ = webrtc_ffi_track_remote_codec.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_codec", track_id, ssrc);
+            }
+            return (MemorySegment)mh$.invokeExact(track_id, ssrc);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_kind {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_kind");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_kind(uint32_t track_id)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_kind$descriptor() {
+        return webrtc_ffi_track_remote_kind.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_kind(uint32_t track_id)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_kind$handle() {
+        return webrtc_ffi_track_remote_kind.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_kind(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_kind$address() {
+        return webrtc_ffi_track_remote_kind.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_kind(uint32_t track_id)
+     * }
+     */
+    public static int webrtc_ffi_track_remote_kind(int track_id) {
+        var mh$ = webrtc_ffi_track_remote_kind.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_kind", track_id);
+            }
+            return (int)mh$.invokeExact(track_id);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_rid {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_rid");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_rid(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_rid$descriptor() {
+        return webrtc_ffi_track_remote_rid.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_rid(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_rid$handle() {
+        return webrtc_ffi_track_remote_rid.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_rid(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_rid$address() {
+        return webrtc_ffi_track_remote_rid.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_rid(uint32_t track_id, uint32_t ssrc)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_rid(int track_id, int ssrc) {
+        var mh$ = webrtc_ffi_track_remote_rid.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_rid", track_id, ssrc);
+            }
+            return (MemorySegment)mh$.invokeExact(track_id, ssrc);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_write_rtcp {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_write_rtcp");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_write_rtcp(uint32_t track_id, uint32_t media_ssrc)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_write_rtcp$descriptor() {
+        return webrtc_ffi_track_remote_write_rtcp.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_write_rtcp(uint32_t track_id, uint32_t media_ssrc)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_write_rtcp$handle() {
+        return webrtc_ffi_track_remote_write_rtcp.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_write_rtcp(uint32_t track_id, uint32_t media_ssrc)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_write_rtcp$address() {
+        return webrtc_ffi_track_remote_write_rtcp.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * int webrtc_ffi_track_remote_write_rtcp(uint32_t track_id, uint32_t media_ssrc)
+     * }
+     */
+    public static int webrtc_ffi_track_remote_write_rtcp(int track_id, int media_ssrc) {
+        var mh$ = webrtc_ffi_track_remote_write_rtcp.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_write_rtcp", track_id, media_ssrc);
+            }
+            return (int)mh$.invokeExact(track_id, media_ssrc);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_set_callbacks {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.ofVoid(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_POINTER
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_set_callbacks");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * void webrtc_ffi_track_remote_set_callbacks(uint32_t track_id, void (*on_rtp)(uint32_t, const uint8_t *, uintptr_t, uint8_t, uint16_t, uint32_t, uint32_t), void (*on_open)(uint32_t, uint32_t, const char *))
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_set_callbacks$descriptor() {
+        return webrtc_ffi_track_remote_set_callbacks.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * void webrtc_ffi_track_remote_set_callbacks(uint32_t track_id, void (*on_rtp)(uint32_t, const uint8_t *, uintptr_t, uint8_t, uint16_t, uint32_t, uint32_t), void (*on_open)(uint32_t, uint32_t, const char *))
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_set_callbacks$handle() {
+        return webrtc_ffi_track_remote_set_callbacks.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * void webrtc_ffi_track_remote_set_callbacks(uint32_t track_id, void (*on_rtp)(uint32_t, const uint8_t *, uintptr_t, uint8_t, uint16_t, uint32_t, uint32_t), void (*on_open)(uint32_t, uint32_t, const char *))
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_set_callbacks$address() {
+        return webrtc_ffi_track_remote_set_callbacks.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * void webrtc_ffi_track_remote_set_callbacks(uint32_t track_id, void (*on_rtp)(uint32_t, const uint8_t *, uintptr_t, uint8_t, uint16_t, uint32_t, uint32_t), void (*on_open)(uint32_t, uint32_t, const char *))
+     * }
+     */
+    public static void webrtc_ffi_track_remote_set_callbacks(int track_id, MemorySegment on_rtp, MemorySegment on_open) {
+        var mh$ = webrtc_ffi_track_remote_set_callbacks.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_set_callbacks", track_id, on_rtp, on_open);
+            }
+            mh$.invokeExact(track_id, on_rtp, on_open);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_id {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_id");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_id(uint32_t track_id)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_id$descriptor() {
+        return webrtc_ffi_track_remote_id.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_id(uint32_t track_id)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_id$handle() {
+        return webrtc_ffi_track_remote_id.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_id(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_id$address() {
+        return webrtc_ffi_track_remote_id.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_id(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_id(int track_id) {
+        var mh$ = webrtc_ffi_track_remote_id.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_id", track_id);
+            }
+            return (MemorySegment)mh$.invokeExact(track_id);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    private static class webrtc_ffi_track_remote_label {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_INT
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_track_remote_label");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    /**
+     * Function descriptor for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_label(uint32_t track_id)
+     * }
+     */
+    public static FunctionDescriptor webrtc_ffi_track_remote_label$descriptor() {
+        return webrtc_ffi_track_remote_label.DESC;
+    }
+
+    /**
+     * Downcall method handle for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_label(uint32_t track_id)
+     * }
+     */
+    public static MethodHandle webrtc_ffi_track_remote_label$handle() {
+        return webrtc_ffi_track_remote_label.HANDLE;
+    }
+
+    /**
+     * Address for:
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_label(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_label$address() {
+        return webrtc_ffi_track_remote_label.ADDR;
+    }
+
+    /**
+     * {@snippet lang=c :
+     * char *webrtc_ffi_track_remote_label(uint32_t track_id)
+     * }
+     */
+    public static MemorySegment webrtc_ffi_track_remote_label(int track_id) {
+        var mh$ = webrtc_ffi_track_remote_label.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_track_remote_label", track_id);
+            }
+            return (MemorySegment)mh$.invokeExact(track_id);
         } catch (Error | RuntimeException ex) {
            throw ex;
         } catch (Throwable ex$) {

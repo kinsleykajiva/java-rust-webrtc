@@ -111,6 +111,26 @@
                                 <argument>webrtc_ffi_data_channel_send_bytes</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_supported_codecs</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_add_transceiver_from_kind</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_get_stats</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_ssrcs</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_codec</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_kind</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_rid</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_write_rtcp</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_set_callbacks</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_id</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_track_remote_label</argument>
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>

@@ -2,3 +2,6 @@ rust-webrtc
 .idea
 AGENTS.md
 JavaRust-Webrtc.iml
+*.class
+/tmp_error.txt
+/tmp_output.txt

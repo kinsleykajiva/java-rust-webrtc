@@ -22,6 +22,16 @@ typedef void (*ConnectionStateCallback)(void*, int);
 typedef void (*DataChannelCallback)(void*, uint16_t, const char*);
 
 /**
+ * ICE gathering state change (0=new, 1=gathering, 2=complete).
+ */
+typedef void (*IceGatheringStateCallback)(void*, int);
+
+/**
+ * Remote track received; surfaced by track_id + label.
+ */
+typedef void (*TrackCallback)(void*, uint32_t, const char*);
+
+/**
  * Returns a status string confirming the FFI bridge is loaded.
  */
 char *webrtc_ffi_init(void);
@@ -72,7 +82,9 @@ void *webrtc_ffi_peer_create(void *cfg,
                              void *user_data,
                              IceCandidateCallback on_ice_candidate,
                              ConnectionStateCallback on_connection_state,
-                             DataChannelCallback on_data_channel);
+                             DataChannelCallback on_data_channel,
+                             IceGatheringStateCallback on_ice_gathering_state_change,
+                             TrackCallback on_track);
 
 /**
  * Close and free a peer connection handle.
@@ -176,5 +188,71 @@ int webrtc_ffi_data_channel_send_bytes(void *peer, uint16_t id, const uint8_t *d
  * `<kind>` is `audio` or `video`. `<channels>` is `0` for video codecs.
  */
 char *webrtc_ffi_supported_codecs(void);
+
+/**
+ * Add a recvonly or sendrecv transceiver of the given kind.
+ * `kind`: 0=audio, 1=video. `direction`: 0=recvonly, 3=sendrecv.
+ * Returns 0 on success.
+ */
+int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction);
+
+/**
+ * Get inbound RTP stream stats as a JSON string. Returns a NUL-terminated
+ * C string the caller must free with `webrtc_ffi_free_string`.
+ */
+char *webrtc_ffi_get_stats(void *peer);
+
+/**
+ * Get the SSRCs of a remote track as a space-separated string.
+ * Returns a NUL-terminated C string the caller must free.
+ */
+char *webrtc_ffi_track_remote_ssrcs(uint32_t track_id);
+
+/**
+ * Get the codec info of a remote track as a tab-separated string:
+ * `mime_type\tpayload_type\tclock_rate\tchannels\tsdp_fmtp_line`
+ */
+char *webrtc_ffi_track_remote_codec(uint32_t track_id, uint32_t ssrc);
+
+/**
+ * Get the kind of a remote track: 0=audio, 1=video, -1=error.
+ */
+int webrtc_ffi_track_remote_kind(uint32_t track_id);
+
+/**
+ * Get the RID of a remote track for a given SSRC. Returns NUL-terminated
+ * C string (empty if no RID).
+ */
+char *webrtc_ffi_track_remote_rid(uint32_t track_id, uint32_t ssrc);
+
+/**
+ * Send a PictureLossIndication (PLI) RTCP packet to a remote track.
+ * `media_ssrc` is the SSRC of the media stream.
+ */
+int webrtc_ffi_track_remote_write_rtcp(uint32_t track_id, uint32_t media_ssrc);
+
+/**
+ * Register event callbacks for a remote track. The poller will be spawned
+ * automatically when the track is received via `on_track`.
+ */
+void webrtc_ffi_track_remote_set_callbacks(uint32_t track_id,
+                                           void (*on_rtp)(uint32_t,
+                                                          const uint8_t*,
+                                                          uintptr_t,
+                                                          uint8_t,
+                                                          uint16_t,
+                                                          uint32_t,
+                                                          uint32_t),
+                                           void (*on_open)(uint32_t, uint32_t, const char*));
+
+/**
+ * Get the track ID of a remote track. Returns a NUL-terminated C string.
+ */
+char *webrtc_ffi_track_remote_id(uint32_t track_id);
+
+/**
+ * Get the label of a remote track. Returns a NUL-terminated C string.
+ */
+char *webrtc_ffi_track_remote_label(uint32_t track_id);
 
 #endif /* WEBRTC_FFI_H */

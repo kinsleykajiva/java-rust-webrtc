@@ -2,6 +2,7 @@ C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\ki
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\Configuration.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\DataChannel.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\DtlsRole.java
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\IceGatheringState.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\internal\NativeLibraryLoader.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\MediaKind.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\NetworkType.java
@@ -9,6 +10,8 @@ C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\ki
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\PeerConnectionState.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\SdpType.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\SessionDescription.java
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\StatsReport.java
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\TrackRemote.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\TransceiverDirection.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\src\main\java\io\github\kinsleykajiva\webrtc\WebRtc.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_close.java
@@ -16,3 +19,5 @@ C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\j
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_data_channel_set_callbacks$on_open.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h$shared.java
 C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_h.java
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_track_remote_set_callbacks$on_open.java
+C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\library\target\generated-sources\jextract\io\github\kinsleykajiva\webrtc\ffm\webrtc_ffi_track_remote_set_callbacks$on_rtp.java

@@ -31,6 +31,12 @@ public final class PeerConnection implements AutoCloseable {
 
         /** The remote peer created a data channel. */
         default void onDataChannel(int id, String label) {}
+
+        /** ICE gathering state changed (0=new, 1=gathering, 2=complete). */
+        default void onIceGatheringStateChange(int state) {}
+
+        /** A remote track was received. */
+        default void onTrack(int trackId, String label) {}
     }
 
     private static final Linker LINKER = Linker.nativeLinker();
@@ -49,6 +55,10 @@ public final class PeerConnection implements AutoCloseable {
         this.observerId = observerId;
     }
 
+    MemorySegment handle() {
+        return handle;
+    }
+
     /**
      * Creates a peer connection from the given configuration and event observer.
      * The configuration is consumed and closed by this call.
@@ -65,8 +75,10 @@ public final class PeerConnection implements AutoCloseable {
         MemorySegment onIce = UPCALL_ICE;
         MemorySegment onState = UPCALL_STATE;
         MemorySegment onDc = UPCALL_DC;
+        MemorySegment onGathering = UPCALL_GATHERING;
+        MemorySegment onTrack = UPCALL_TRACK;
 
-        MemorySegment h = webrtc_ffi_h.webrtc_ffi_peer_create(cfgHandle, userData, onIce, onState, onDc);
+        MemorySegment h = webrtc_ffi_h.webrtc_ffi_peer_create(cfgHandle, userData, onIce, onState, onDc, onGathering, onTrack);
         config.close();
         if (h == null || h.address() == 0) {
             OBSERVERS.remove(id);
@@ -86,6 +98,12 @@ public final class PeerConnection implements AutoCloseable {
     private static final MemorySegment UPCALL_DC = makeUpcall(
             "dcCb", MethodType.methodType(void.class, MemorySegment.class, short.class, MemorySegment.class),
             FunctionDescriptor.ofVoid(webrtc_ffi_h.C_POINTER, webrtc_ffi_h.C_SHORT, webrtc_ffi_h.C_POINTER));
+    private static final MemorySegment UPCALL_GATHERING = makeUpcall(
+            "gatheringCb", MethodType.methodType(void.class, MemorySegment.class, int.class),
+            FunctionDescriptor.ofVoid(webrtc_ffi_h.C_POINTER, webrtc_ffi_h.C_INT));
+    private static final MemorySegment UPCALL_TRACK = makeUpcall(
+            "trackCb", MethodType.methodType(void.class, MemorySegment.class, int.class, MemorySegment.class),
+            FunctionDescriptor.ofVoid(webrtc_ffi_h.C_POINTER, webrtc_ffi_h.C_INT, webrtc_ffi_h.C_POINTER));
 
     private static MemorySegment makeUpcall(String name, MethodType type, FunctionDescriptor desc) {
         try {
@@ -114,6 +132,21 @@ public final class PeerConnection implements AutoCloseable {
         Observer obs = OBSERVERS.get(userData.address());
         if (obs != null) {
             obs.onDataChannel(id, readStr(labelPtr));
+        }
+    }
+
+    private static void gatheringCb(MemorySegment userData, int state) {
+        Observer obs = OBSERVERS.get(userData.address());
+        if (obs != null) {
+            obs.onIceGatheringStateChange(state);
+        }
+    }
+
+    private static void trackCb(MemorySegment userData, int trackId, MemorySegment labelPtr) {
+        Observer obs = OBSERVERS.get(userData.address());
+        if (obs != null) {
+            TrackRemote.register(trackId);
+            obs.onTrack(trackId, readStr(labelPtr));
         }
     }
 
@@ -180,6 +213,21 @@ public final class PeerConnection implements AutoCloseable {
         if (rc != 0) {
             throw new IllegalStateException("addTransceiver failed: " + rc);
         }
+    }
+
+    /** Adds a transceiver from media kind using the standard transceiver API. */
+    public void addTransceiverFromKind(MediaKind kind, TransceiverDirection direction) {
+        checkClosed();
+        int rc = webrtc_ffi_h.webrtc_ffi_add_transceiver_from_kind(handle, kind.value, direction.value);
+        if (rc != 0) {
+            throw new IllegalStateException("addTransceiverFromKind failed: " + rc);
+        }
+    }
+
+    /** Fetches stats for this peer connection. */
+    public StatsReport getStats() {
+        checkClosed();
+        return StatsReport.fetch(this);
     }
 
     /** Adds a remote ICE candidate. */

@@ -20,18 +20,20 @@ use webrtc::peer_connection::{
     RTCPeerConnectionIceEvent,
 };
 use webrtc::runtime::default_runtime;
-use webrtc::data_channel::{DataChannel as _, DataChannelEvent, RTCDataChannelInit};
+use webrtc::data_channel::{DataChannelEvent, RTCDataChannelInit};
+use webrtc::media_stream::track_remote::{TrackRemote, TrackRemoteEvent};
 
-use rtc::data_channel::{RTCDataChannelId, RTCDataChannelMessage, RTCDataChannelState};
 use rtc::peer_connection::configuration::RTCIceServer;
 use rtc::peer_connection::configuration::RTCOfferOptions;
 use rtc::peer_connection::configuration::setting_engine::SettingEngine;
-use rtc::peer_connection::sdp::{RTCSdpType, RTCSessionDescription};
-use rtc::peer_connection::state::RTCPeerConnectionState;
+use rtc::peer_connection::sdp::RTCSessionDescription;
+use rtc::peer_connection::state::{RTCPeerConnectionState, RTCIceGatheringState};
 use rtc::peer_connection::transport::{RTCIceCandidateInit, RTCDtlsRole};
 use rtc::ice::network_type::NetworkType;
-use rtc::rtp_transceiver::rtp_sender::{RtpCodecKind, RTCRtpEncodingParameters};
+use rtc::rtp_transceiver::rtp_sender::RtpCodecKind;
 use rtc::rtp_transceiver::{RTCRtpTransceiverDirection, RTCRtpTransceiverInit};
+use rtc::rtcp::payload_feedbacks::picture_loss_indication::PictureLossIndication;
+use rtc::statistics::report::RTCStatsReportEntry;
 
 /// Runtime that actually drives each PeerConnection's async work. Callbacks
 /// (ICE candidate, state changes, data channel polls) are delivered on its
@@ -123,6 +125,10 @@ type IceCandidateCallback = extern "C" fn(*mut c_void, *const c_char, *const c_c
 type ConnectionStateCallback = extern "C" fn(*mut c_void, c_int);
 /// Data channel created by the remote peer; surfaced by id + label.
 type DataChannelCallback = extern "C" fn(*mut c_void, u16, *const c_char);
+/// ICE gathering state change (0=new, 1=gathering, 2=complete).
+type IceGatheringStateCallback = extern "C" fn(*mut c_void, c_int);
+/// Remote track received; surfaced by track_id + label.
+type TrackCallback = extern "C" fn(*mut c_void, u32, *const c_char);
 
 // ---------------------------------------------------------------------------
 // String helpers
@@ -273,6 +279,8 @@ struct Forwarder {
     on_ice_candidate: Option<IceCandidateCallback>,
     on_connection_state: Option<ConnectionStateCallback>,
     on_data_channel: Option<DataChannelCallback>,
+    on_ice_gathering_state_change: Option<IceGatheringStateCallback>,
+    on_track: Option<TrackCallback>,
     /// Shared with the owning `Peer` so remotely-received data channels can be
     /// registered for polling.
     data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
@@ -330,6 +338,27 @@ impl PeerConnectionEventHandler for Forwarder {
             spawn_data_channel_poller(dc, id, self.dc_callbacks.clone());
         }
     }
+
+    async fn on_ice_gathering_state_change(&self, state: RTCIceGatheringState) {
+        if let Some(cb) = &self.on_ice_gathering_state_change {
+            let value = match state {
+                RTCIceGatheringState::New => 0,
+                RTCIceGatheringState::Gathering => 1,
+                RTCIceGatheringState::Complete => 2,
+                _ => -1,
+            };
+            cb(self.user_data, value);
+        }
+    }
+
+    async fn on_track(&self, track: Arc<dyn TrackRemote>) {
+        if let Some(cb) = &self.on_track {
+            let track_id = register_track(track.clone());
+            let label = track.label().await;
+            let label_c = CString::new(label).unwrap_or_default();
+            cb(self.user_data, track_id, label_c.as_ptr());
+        }
+    }
 }
 
 fn callback_is_null<T>(f: Option<T>) -> bool {
@@ -345,6 +374,8 @@ pub extern "C" fn webrtc_ffi_peer_create(
     on_ice_candidate: IceCandidateCallback,
     on_connection_state: ConnectionStateCallback,
     on_data_channel: DataChannelCallback,
+    on_ice_gathering_state_change: IceGatheringStateCallback,
+    on_track: TrackCallback,
 ) -> *mut c_void {
     let data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>> =
         Arc::new(Mutex::new(HashMap::new()));
@@ -365,6 +396,16 @@ pub extern "C" fn webrtc_ffi_peer_create(
             None
         } else {
             Some(on_data_channel)
+        },
+        on_ice_gathering_state_change: if callback_is_null(Some(on_ice_gathering_state_change)) {
+            None
+        } else {
+            Some(on_ice_gathering_state_change)
+        },
+        on_track: if callback_is_null(Some(on_track)) {
+            None
+        } else {
+            Some(on_track)
         },
         data_channels: data_channels.clone(),
         dc_callbacks: dc_callbacks.clone(),
@@ -882,4 +923,280 @@ pub extern "C" fn webrtc_ffi_supported_codecs() -> *mut c_char {
         }
     }
     unsafe { into_cstring(out) }
+}
+
+// ---------------------------------------------------------------------------
+// Track handles + on_track callback
+// ---------------------------------------------------------------------------
+
+/// Global registry of remote tracks keyed by a monotonically increasing id.
+static TRACK_ID_COUNTER: Lazy<Mutex<u32>> = Lazy::new(|| Mutex::new(1));
+static REMOTE_TRACKS: Lazy<Mutex<HashMap<u32, Arc<dyn TrackRemote>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Per-track event callbacks. Keyed by the same id as `REMOTE_TRACKS`.
+type TrackEventCallbackMap = Mutex<HashMap<u32, TrackEventCallbacks>>;
+
+#[derive(Clone, Copy)]
+struct TrackEventCallbacks {
+    on_rtp: Option<extern "C" fn(u32, *const u8, usize, u8, u16, u32, u32)>,
+    on_open: Option<extern "C" fn(u32, u32, *const c_char)>,
+}
+
+static TRACK_EVENT_CALLBACKS: Lazy<TrackEventCallbackMap> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Allocate a new id and register a remote track.
+fn register_track(track: Arc<dyn TrackRemote>) -> u32 {
+    let mut counter = TRACK_ID_COUNTER.lock().unwrap();
+    let id = *counter;
+    *counter += 1;
+    REMOTE_TRACKS.lock().unwrap().insert(id, track);
+    id
+}
+
+/// Spawn a poller that reads events from a remote track and forwards them
+/// to Java via the registered callbacks.
+fn spawn_track_poller(track: Arc<dyn TrackRemote>, id: u32) {
+    PC_RUNTIME.spawn(async move {
+        loop {
+            match track.poll().await {
+                Some(TrackRemoteEvent::OnOpen(init)) => {
+                    let ssrc = init.ssrc;
+                    let rid = init.rid.unwrap_or_default();
+                    let rid_c = CString::new(rid).unwrap_or_default();
+                    if let Some(cb) = TRACK_EVENT_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_open) {
+                        cb(id, ssrc, rid_c.as_ptr());
+                    }
+                }
+                Some(TrackRemoteEvent::OnRtpPacket(pkt)) => {
+                    let header = &pkt.header;
+                    let payload: &[u8] = pkt.payload.as_ref();
+                    if let Some(cb) = TRACK_EVENT_CALLBACKS.lock().unwrap().get(&id).and_then(|c| c.on_rtp) {
+                        cb(
+                            id,
+                            payload.as_ptr(),
+                            payload.len(),
+                            header.payload_type,
+                            header.sequence_number,
+                            header.timestamp,
+                            header.ssrc,
+                        );
+                    }
+                }
+                Some(TrackRemoteEvent::OnEnding)
+                | Some(TrackRemoteEvent::OnEnded)
+                | Some(TrackRemoteEvent::OnError)
+                | None => {
+                    break;
+                }
+                _ => {}
+            }
+        }
+        REMOTE_TRACKS.lock().unwrap().remove(&id);
+        TRACK_EVENT_CALLBACKS.lock().unwrap().remove(&id);
+    });
+}
+
+/// Get a remote track handle by id.
+fn with_track<T, F: FnOnce(&Arc<dyn TrackRemote>) -> T>(id: u32, f: F) -> Option<T> {
+    REMOTE_TRACKS.lock().unwrap().get(&id).map(|t| f(t))
+}
+
+// ---------------------------------------------------------------------------
+// Transceiver / Stats / Track FFI functions
+// ---------------------------------------------------------------------------
+
+/// Add a recvonly or sendrecv transceiver of the given kind.
+/// `kind`: 0=audio, 1=video. `direction`: 0=recvonly, 3=sendrecv.
+/// Returns 0 on success.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_add_transceiver_from_kind(
+    peer: *mut c_void,
+    kind: c_int,
+    direction: c_int,
+) -> c_int {
+    if peer.is_null() {
+        return -1;
+    }
+    let p = unsafe { &*(peer as *const Peer) };
+    let codec_kind = match kind {
+        0 => RtpCodecKind::Audio,
+        1 => RtpCodecKind::Video,
+        _ => return -2,
+    };
+    let dir = match direction {
+        DIR_SENDRECV => RTCRtpTransceiverDirection::Sendrecv,
+        DIR_SENDONLY => RTCRtpTransceiverDirection::Sendonly,
+        DIR_RECVONLY => RTCRtpTransceiverDirection::Recvonly,
+        DIR_INACTIVE => RTCRtpTransceiverDirection::Inactive,
+        _ => RTCRtpTransceiverDirection::Unspecified,
+    };
+    let init = RTCRtpTransceiverInit {
+        direction: dir,
+        ..Default::default()
+    };
+    let result = block_on(p.pc.add_transceiver_from_kind(codec_kind, Some(init)));
+    match result {
+        Ok(_) => 0,
+        Err(_) => -4,
+    }
+}
+
+/// Get inbound RTP stream stats as a JSON string. Returns a NUL-terminated
+/// C string the caller must free with `webrtc_ffi_free_string`.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_get_stats(peer: *mut c_void) -> *mut c_char {
+    if peer.is_null() {
+        return unsafe { into_cstring(String::new()) };
+    }
+    let p = unsafe { &*(peer as *const Peer) };
+    let report = block_on(p.pc.get_stats(
+        std::time::Instant::now(),
+        rtc::statistics::StatsSelector::None,
+    ));
+    let mut out = String::new();
+    out.push('[');
+    let mut first = true;
+    for entry in report.iter() {
+        if !first {
+            out.push(',');
+        }
+        first = false;
+        match entry {
+            RTCStatsReportEntry::PeerConnection(s) => {
+                out.push_str(&format!(
+                    "{{\"type\":\"peer-connection\",\"data_channels_opened\":{},\"data_channels_closed\":{}}}",
+                    s.data_channels_opened, s.data_channels_closed
+                ));
+            }
+            RTCStatsReportEntry::InboundRtp(s) => {
+                let base = &s.received_rtp_stream_stats;
+                out.push_str(&format!(
+                    "{{\"type\":\"inbound-rtp\",\"ssrc\":{},\"kind\":\"{}\",\"track_identifier\":\"{}\",\"bytes_received\":{},\"packets_received\":{},\"packets_lost\":{},\"jitter\":{},\"nack_count\":{},\"fir_count\":{},\"pli_count\":{}}}",
+                    base.rtp_stream_stats.ssrc,
+                    base.rtp_stream_stats.kind,
+                    s.track_identifier,
+                    s.bytes_received,
+                    base.packets_received,
+                    base.packets_lost,
+                    base.jitter,
+                    s.nack_count,
+                    s.fir_count,
+                    s.pli_count,
+                ));
+            }
+            RTCStatsReportEntry::RemoteCandidate(s) => {
+                let addr = s.address.as_deref().unwrap_or("");
+                out.push_str(&format!(
+                    "{{\"type\":\"remote-candidate\",\"address\":\"{}\",\"port\":{},\"candidate_type\":\"{:?}\"}}",
+                    addr, s.port, s.candidate_type
+                ));
+            }
+            _ => {}
+        }
+    }
+    out.push(']');
+    unsafe { into_cstring(out) }
+}
+
+/// Get the SSRCs of a remote track as a space-separated string.
+/// Returns a NUL-terminated C string the caller must free.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_ssrcs(track_id: u32) -> *mut c_char {
+    let result = with_track(track_id, |t| {
+        let ssrcs = block_on(t.ssrcs());
+        ssrcs.iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    });
+    unsafe { into_cstring(result.unwrap_or_default()) }
+}
+
+/// Get the codec info of a remote track as a tab-separated string:
+/// `mime_type\tpayload_type\tclock_rate\tchannels\tsdp_fmtp_line`
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_codec(track_id: u32, ssrc: u32) -> *mut c_char {
+    let result = with_track(track_id, |t| {
+        block_on(t.codec(ssrc)).map(|c| {
+            format!(
+                "{}\t{}\t{}\t{}",
+                c.mime_type, c.clock_rate, c.channels, c.sdp_fmtp_line
+            )
+        })
+    });
+    unsafe { into_cstring(result.flatten().unwrap_or_default()) }
+}
+
+/// Get the kind of a remote track: 0=audio, 1=video, -1=error.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_kind(track_id: u32) -> c_int {
+    with_track(track_id, |t| {
+        match block_on(t.kind()) {
+            RtpCodecKind::Audio => 0,
+            RtpCodecKind::Video => 1,
+            _ => -1,
+        }
+    }).unwrap_or(-1)
+}
+
+/// Get the RID of a remote track for a given SSRC. Returns NUL-terminated
+/// C string (empty if no RID).
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_rid(track_id: u32, ssrc: u32) -> *mut c_char {
+    let result = with_track(track_id, |t| {
+        block_on(t.rid(ssrc)).unwrap_or_default()
+    });
+    unsafe { into_cstring(result.unwrap_or_default()) }
+}
+
+/// Send a PictureLossIndication (PLI) RTCP packet to a remote track.
+/// `media_ssrc` is the SSRC of the media stream.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_write_rtcp(track_id: u32, media_ssrc: u32) -> c_int {
+    with_track(track_id, |t| {
+        let pli = PictureLossIndication {
+            sender_ssrc: 0,
+            media_ssrc,
+        };
+        block_on(t.write_rtcp(vec![Box::new(pli)]))
+    })
+    .unwrap_or(Err(webrtc::error::Error::ErrBufferFull))
+    .is_ok() as c_int
+}
+
+/// Register event callbacks for a remote track. The poller will be spawned
+/// automatically when the track is received via `on_track`.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_set_callbacks(
+    track_id: u32,
+    on_rtp: Option<extern "C" fn(u32, *const u8, usize, u8, u16, u32, u32)>,
+    on_open: Option<extern "C" fn(u32, u32, *const c_char)>,
+) {
+    TRACK_EVENT_CALLBACKS.lock().unwrap().insert(
+        track_id,
+        TrackEventCallbacks { on_rtp, on_open },
+    );
+    // If the track is already registered, spawn a poller now.
+    if let Some(track) = REMOTE_TRACKS.lock().unwrap().get(&track_id).cloned() {
+        spawn_track_poller(track, track_id);
+    }
+}
+
+/// Get the track ID of a remote track. Returns a NUL-terminated C string.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_id(track_id: u32) -> *mut c_char {
+    let result = with_track(track_id, |t| {
+        block_on(t.track_id())
+    });
+    unsafe { into_cstring(result.unwrap_or_default()) }
+}
+
+/// Get the label of a remote track. Returns a NUL-terminated C string.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_track_remote_label(track_id: u32) -> *mut c_char {
+    let result = with_track(track_id, |t| {
+        block_on(t.label())
+    });
+    unsafe { into_cstring(result.unwrap_or_default()) }
 }
