@@ -73,12 +73,16 @@ public final class TrackRemote {
         return nativeTrackId;
     }
 
-    static TrackRemote register(int nativeTrackId) {
+    public static TrackRemote register(int nativeTrackId) {
         return TRACKS.computeIfAbsent(nativeTrackId, id -> {
             TrackRemote track = new TrackRemote(id);
             webrtc_ffi_h.webrtc_ffi_track_remote_set_callbacks(id, ON_RTP, ON_OPEN);
             return track;
         });
+    }
+
+    public static TrackRemote get(int nativeTrackId) {
+        return TRACKS.get(nativeTrackId);
     }
 
     private static final webrtc_ffi_track_remote_set_callbacks$on_rtp.Function ON_RTP_FUNC = (trackId, payloadPtr, len, payloadType, seq, ts, ssrc) -> {

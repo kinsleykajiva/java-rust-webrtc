@@ -293,6 +293,60 @@ public final class PeerConnection implements AutoCloseable {
         }
     }
 
+    /** Adds a local track for sending media. Returns a sender handle id. */
+    public int addTrack(TrackLocal track) {
+        checkClosed();
+        int senderId = webrtc_ffi_h.webrtc_ffi_add_track(handle, track.nativeTrackId());
+        if (senderId < 0) {
+            throw new IllegalStateException("addTrack failed: " + senderId);
+        }
+        return senderId;
+    }
+
+    /** Removes a sender (by sender handle id) from this peer connection. */
+    public void removeTrack(int senderId) {
+        checkClosed();
+        int rc = webrtc_ffi_h.webrtc_ffi_remove_track(handle, senderId);
+        if (rc != 0) {
+            throw new IllegalStateException("removeTrack failed: " + rc);
+        }
+    }
+
+    /** Returns sender handle ids for all senders on this peer connection. */
+    public int[] getSenders() {
+        checkClosed();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment ptr = webrtc_ffi_h.webrtc_ffi_get_senders(handle);
+            String raw = readStr(ptr);
+            if (raw.isEmpty()) {
+                return new int[0];
+            }
+            String[] parts = raw.split("\\s+");
+            int[] ids = new int[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                try {
+                    ids[i] = Integer.parseInt(parts[i]);
+                } catch (NumberFormatException e) {
+                    ids[i] = -1;
+                }
+            }
+            return ids;
+        }
+    }
+
+    /** Returns the negotiated payload type for the given sender handle id. */
+    public int senderGetPayloadType(int senderId) {
+        return webrtc_ffi_h.webrtc_ffi_sender_get_payload_type(senderId);
+    }
+
+    /** Returns the negotiated codec info for the given sender handle id as a tab-separated string. */
+    public String senderGetCodec(int senderId) {
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment ptr = webrtc_ffi_h.webrtc_ffi_sender_get_codec(senderId);
+            return readStr(ptr);
+        }
+    }
+
     private void checkClosed() {
         if (closed) {
             throw new IllegalStateException("PeerConnection is closed");

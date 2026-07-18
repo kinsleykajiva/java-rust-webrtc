@@ -22,6 +22,14 @@ use webrtc::peer_connection::{
 use webrtc::runtime::default_runtime;
 use webrtc::data_channel::{DataChannelEvent, RTCDataChannelInit};
 use webrtc::media_stream::track_remote::{TrackRemote, TrackRemoteEvent};
+use webrtc::media_stream::track_local::TrackLocal;
+use webrtc::media_stream::track_local::static_sample::TrackLocalStaticSample;
+use webrtc::media_stream::MediaStreamTrack;
+use webrtc::rtp_transceiver::RtpSender;
+use rtc::media::Sample;
+use rtc::rtp_transceiver::rtp_sender::{
+    RTCRtpCodec, RTCRtpCodingParameters, RTCRtpEncodingParameters,
+};
 
 use rtc::peer_connection::configuration::RTCIceServer;
 use rtc::peer_connection::configuration::RTCOfferOptions;
@@ -1197,6 +1205,227 @@ pub extern "C" fn webrtc_ffi_track_remote_id(track_id: u32) -> *mut c_char {
 pub extern "C" fn webrtc_ffi_track_remote_label(track_id: u32) -> *mut c_char {
     let result = with_track(track_id, |t| {
         block_on(t.label())
+    });
+    unsafe { into_cstring(result.unwrap_or_default()) }
+}
+
+// ---------------------------------------------------------------------------
+// Local track (TrackLocalStaticSample) + Sender management
+// ---------------------------------------------------------------------------
+
+static LOCAL_TRACK_ID_COUNTER: Lazy<Mutex<u32>> = Lazy::new(|| Mutex::new(1));
+static LOCAL_TRACKS: Lazy<Mutex<HashMap<u32, Arc<TrackLocalStaticSample>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+static SENDER_ID_COUNTER: Lazy<Mutex<u32>> = Lazy::new(|| Mutex::new(1));
+static SENDERS: Lazy<Mutex<HashMap<u32, Arc<dyn RtpSender>>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+fn register_local_track(track: Arc<TrackLocalStaticSample>) -> u32 {
+    let mut counter = LOCAL_TRACK_ID_COUNTER.lock().unwrap();
+    let id = *counter;
+    *counter += 1;
+    LOCAL_TRACKS.lock().unwrap().insert(id, track);
+    id
+}
+
+fn register_sender(sender: Arc<dyn RtpSender>) -> u32 {
+    let mut counter = SENDER_ID_COUNTER.lock().unwrap();
+    let id = *counter;
+    *counter += 1;
+    SENDERS.lock().unwrap().insert(id, sender);
+    id
+}
+
+/// Create a local track for sending media samples. Returns a track handle id
+/// (u32) on success, 0 on failure.
+///
+/// - `stream_id`, `track_id`, `label`: metadata strings
+/// - `kind`: 1=audio, 2=video
+/// - `ssrc`: synchronization source identifier
+/// - `mime_type`: e.g. "audio/opus", "video/H264", "video/VP8"
+/// - `clock_rate`: e.g. 48000 for Opus, 90000 for video
+/// - `channels`: 0 for video, 2 for stereo Opus
+/// - `sdp_fmtp_line`: codec-specific SDP fmtp, may be empty
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_create_track_local(
+    stream_id: *const c_char,
+    track_id: *const c_char,
+    label: *const c_char,
+    kind: c_int,
+    ssrc: u32,
+    mime_type: *const c_char,
+    clock_rate: u32,
+    channels: c_int,
+    sdp_fmtp_line: *const c_char,
+) -> u32 {
+    let codec_kind = match kind {
+        1 => RtpCodecKind::Audio,
+        2 => RtpCodecKind::Video,
+        _ => return 0,
+    };
+    let codec = RTCRtpCodec {
+        mime_type: read_str(mime_type).to_string(),
+        clock_rate,
+        channels: channels as u16,
+        sdp_fmtp_line: read_str(sdp_fmtp_line).to_string(),
+        rtcp_feedback: vec![],
+    };
+    let encoding = RTCRtpEncodingParameters {
+        rtp_coding_parameters: RTCRtpCodingParameters {
+            ssrc: Some(ssrc),
+            ..Default::default()
+        },
+        codec,
+        ..Default::default()
+    };
+    let track_metadata = MediaStreamTrack::new(
+        read_str(stream_id).to_string(),
+        read_str(track_id).to_string(),
+        read_str(label).to_string(),
+        codec_kind,
+        vec![encoding],
+    );
+    let track = match TrackLocalStaticSample::new(track_metadata) {
+        Ok(t) => t,
+        Err(_) => return 0,
+    };
+    register_local_track(Arc::new(track))
+}
+
+/// Add a local track to a peer connection. Returns a sender handle id (>= 1)
+/// on success, negative on error.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_add_track(peer: *mut c_void, track_id: u32) -> c_int {
+    if peer.is_null() {
+        return -1;
+    }
+    let track = LOCAL_TRACKS.lock().unwrap().get(&track_id).cloned();
+    let track = match track {
+        Some(t) => t,
+        None => return -2,
+    };
+    let p = unsafe { &*(peer as *const Peer) };
+    match block_on(p.pc.add_track(track as Arc<dyn TrackLocal>)) {
+        Ok(sender) => register_sender(sender) as c_int,
+        Err(_) => -3,
+    }
+}
+
+/// Write a media sample to a local track. The data is the raw codec bitstream
+/// (e.g. NAL unit for H.264, IVF frame for VP8, Opus packet).
+///
+/// - `track_id`: handle from `webrtc_ffi_create_track_local`
+/// - `ssrc`: must match the SSRC used at track creation
+/// - `payload_type`: negotiated payload type from `webrtc_ffi_sender_get_payload_type`
+/// - `data` / `len`: raw codec frame bytes
+/// - `duration_ms`: sample duration in milliseconds
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_write_sample(
+    track_id: u32,
+    ssrc: u32,
+    payload_type: u8,
+    data: *const u8,
+    len: usize,
+    duration_ms: u32,
+) -> c_int {
+    if data.is_null() || len == 0 {
+        return -1;
+    }
+    let track = LOCAL_TRACKS.lock().unwrap().get(&track_id).cloned();
+    let track = match track {
+        Some(t) => t,
+        None => return -2,
+    };
+    let bytes = unsafe { std::slice::from_raw_parts(data, len) };
+    let mut buf = bytes::BytesMut::with_capacity(len);
+    buf.extend_from_slice(bytes);
+    let sample = Sample {
+        data: buf.freeze(),
+        duration: std::time::Duration::from_millis(duration_ms as u64),
+        ..Default::default()
+    };
+    match block_on(track.write_sample(ssrc, payload_type, &sample, &[])) {
+        Ok(()) => 0,
+        Err(_) => -3,
+    }
+}
+
+/// Get sender handle IDs for a peer connection as a space-separated string.
+/// Returns a NUL-terminated C string the caller must free.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_get_senders(peer: *mut c_void) -> *mut c_char {
+    if peer.is_null() {
+        return unsafe { into_cstring(String::new()) };
+    }
+    let p = unsafe { &*(peer as *const Peer) };
+    let senders = block_on(p.pc.get_senders());
+    let ids: Vec<String> = senders
+        .iter()
+        .map(|s| register_sender(s.clone()).to_string())
+        .collect();
+    unsafe { into_cstring(ids.join(" ")) }
+}
+
+/// Remove a local track from a peer connection by sender handle id.
+/// Returns 0 on success, negative on error.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_remove_track(peer: *mut c_void, sender_id: u32) -> c_int {
+    if peer.is_null() {
+        return -1;
+    }
+    let sender = SENDERS.lock().unwrap().get(&sender_id).cloned();
+    let sender = match sender {
+        Some(s) => s,
+        None => return -2,
+    };
+    let p = unsafe { &*(peer as *const Peer) };
+    match block_on(p.pc.remove_track(&sender)) {
+        Ok(()) => 0,
+        Err(_) => -3,
+    }
+}
+
+/// Get the negotiated payload type for a sender. Returns the PT (0-255) or
+/// -1 on error.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_sender_get_payload_type(sender_id: u32) -> c_int {
+    let sender = SENDERS.lock().unwrap().get(&sender_id).cloned();
+    let sender = match sender {
+        Some(s) => s,
+        None => return -1,
+    };
+    match block_on(sender.get_parameters()) {
+        Ok(params) => params
+            .rtp_parameters
+            .codecs
+            .first()
+            .map(|c| c.payload_type as c_int)
+            .unwrap_or(-1),
+        Err(_) => -1,
+    }
+}
+
+/// Get the negotiated codec info for a sender as a tab-separated string:
+/// `mime_type\tpayload_type\tclock_rate\tchannels\tsdp_fmtp_line`
+/// Returns a NUL-terminated C string the caller must free.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_sender_get_codec(sender_id: u32) -> *mut c_char {
+    let sender = SENDERS.lock().unwrap().get(&sender_id).cloned();
+    let sender = match sender {
+        Some(s) => s,
+        None => return unsafe { into_cstring(String::new()) },
+    };
+    let result = block_on(sender.get_parameters()).ok().and_then(|params| {
+        params.rtp_parameters.codecs.first().map(|c| {
+            format!(
+                "{}\t{}\t{}\t{}\t{}",
+                c.rtp_codec.mime_type,
+                c.payload_type,
+                c.rtp_codec.clock_rate,
+                c.rtp_codec.channels,
+                c.rtp_codec.sdp_fmtp_line,
+            )
+        })
     });
     unsafe { into_cstring(result.unwrap_or_default()) }
 }

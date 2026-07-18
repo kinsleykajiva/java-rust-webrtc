@@ -131,6 +131,20 @@
                                 <argument>webrtc_ffi_track_remote_id</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_track_remote_label</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_create_track_local</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_add_track</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_write_sample</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_get_senders</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_remove_track</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_sender_get_payload_type</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_sender_get_codec</argument>
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>

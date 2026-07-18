@@ -255,4 +255,74 @@ char *webrtc_ffi_track_remote_id(uint32_t track_id);
  */
 char *webrtc_ffi_track_remote_label(uint32_t track_id);
 
+/**
+ * Create a local track for sending media samples. Returns a track handle id
+ * (u32) on success, 0 on failure.
+ *
+ * - `stream_id`, `track_id`, `label`: metadata strings
+ * - `kind`: 1=audio, 2=video
+ * - `ssrc`: synchronization source identifier
+ * - `mime_type`: e.g. "audio/opus", "video/H264", "video/VP8"
+ * - `clock_rate`: e.g. 48000 for Opus, 90000 for video
+ * - `channels`: 0 for video, 2 for stereo Opus
+ * - `sdp_fmtp_line`: codec-specific SDP fmtp, may be empty
+ */
+uint32_t webrtc_ffi_create_track_local(const char *stream_id,
+                                       const char *track_id,
+                                       const char *label,
+                                       int kind,
+                                       uint32_t ssrc,
+                                       const char *mime_type,
+                                       uint32_t clock_rate,
+                                       int channels,
+                                       const char *sdp_fmtp_line);
+
+/**
+ * Add a local track to a peer connection. Returns a sender handle id (>= 1)
+ * on success, negative on error.
+ */
+int webrtc_ffi_add_track(void *peer, uint32_t track_id);
+
+/**
+ * Write a media sample to a local track. The data is the raw codec bitstream
+ * (e.g. NAL unit for H.264, IVF frame for VP8, Opus packet).
+ *
+ * - `track_id`: handle from `webrtc_ffi_create_track_local`
+ * - `ssrc`: must match the SSRC used at track creation
+ * - `payload_type`: negotiated payload type from `webrtc_ffi_sender_get_payload_type`
+ * - `data` / `len`: raw codec frame bytes
+ * - `duration_ms`: sample duration in milliseconds
+ */
+int webrtc_ffi_write_sample(uint32_t track_id,
+                            uint32_t ssrc,
+                            uint8_t payload_type,
+                            const uint8_t *data,
+                            uintptr_t len,
+                            uint32_t duration_ms);
+
+/**
+ * Get sender handle IDs for a peer connection as a space-separated string.
+ * Returns a NUL-terminated C string the caller must free.
+ */
+char *webrtc_ffi_get_senders(void *peer);
+
+/**
+ * Remove a local track from a peer connection by sender handle id.
+ * Returns 0 on success, negative on error.
+ */
+int webrtc_ffi_remove_track(void *peer, uint32_t sender_id);
+
+/**
+ * Get the negotiated payload type for a sender. Returns the PT (0-255) or
+ * -1 on error.
+ */
+int webrtc_ffi_sender_get_payload_type(uint32_t sender_id);
+
+/**
+ * Get the negotiated codec info for a sender as a tab-separated string:
+ * `mime_type\tpayload_type\tclock_rate\tchannels\tsdp_fmtp_line`
+ * Returns a NUL-terminated C string the caller must free.
+ */
+char *webrtc_ffi_sender_get_codec(uint32_t sender_id);
+
 #endif /* WEBRTC_FFI_H */
