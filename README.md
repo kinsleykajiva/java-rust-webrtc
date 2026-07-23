@@ -6,7 +6,7 @@ The goal is to give Java developers a first-class WebRTC stack they can use from
 
 ## Project Status
 
-This library is under active development. The core peer connection, ICE, data channels, media tracks, and trickle ICE are working. More features and a proper release are coming soon.
+This library is under active development. The core peer connection, ICE, data channels, media tracks, and trickle ICE are working. The desktop module provides JavaFX-based device access for camera and microphone capture. More features and a proper release are coming soon.
 
 ## Requirements
 
@@ -62,6 +62,15 @@ java --enable-native-access=ALL-UNNAMED -cp "target/classes;target/dependency/*;
 | `AudioTranscoderDemo` | Audio transcoding bridge (Opus/G.722/PCMU/PCMA) |
 | `SupportedCodecs` | Lists all codecs registered in the media engine |
 
+### Desktop Demos
+
+| Demo | Description |
+|------|-------------|
+| `ListDevices` | Lists all available cameras, microphones, and speakers |
+| `MicrophoneCaptureDemo` | Captures microphone audio and sends it over WebRTC |
+| `CameraCaptureDemo` | Captures webcam video and sends it over WebRTC |
+| `VideoCallApp` | Full video call UI with device selection and controls |
+
 ## Architecture
 
 ```
@@ -80,6 +89,11 @@ Java Application
   webrtc-rs  (ICE, DTLS, SRTP, SCTP, RTP/RTCP)
 ```
 
+The project has two main layers:
+
+- **`library`** -- Pure Java WebRTC core. Server-side, no GUI dependencies. Uses Java FFM to call into Rust.
+- **`desktop`** -- Optional desktop layer. Adds JavaFX UI, camera/microphone capture, and device management. Depends on `library` but does not modify it.
+
 Java calls into the Rust library through jextract-generated FFM bindings. Each FFI call crosses the Java/Rust boundary over a C ABI function. The Rust side manages async tokio runtimes internally and exposes a blocking C interface to Java.
 
 Peer connections are handle-based: Java creates a peer, gets back a numeric handle, and passes it to subsequent calls. Callbacks from Rust back to Java use jextract upcall stubs.
@@ -97,6 +111,15 @@ Peer connections are handle-based: Java creates a peer, gets back a numeric hand
 - **`Codec`** -- Supported codec descriptor
 - **`MimeTypes`** -- MIME type constants for all supported codecs
 - **`PortAllocatorFlags`** -- Bitmask constants for candidate gathering control
+
+### Desktop Module (`desktop`)
+
+- **`DeviceEnumerator`** -- Lists cameras, microphones, and speakers on the system
+- **`AudioDevice`** / **`VideoDevice`** -- Device descriptors
+- **`AudioCapture`** -- Microphone capture piped to WebRTC via `TargetDataLine`
+- **`VideoCapture`** -- Webcam capture piped to WebRTC via webcam-capture library
+- **`BitrateConfig`** -- Audio/video quality presets (low bandwidth, default, high quality, screen share)
+- **`VideoCallWindow`** -- JavaFX video call UI with device selectors, local/remote preview, and call controls
 
 ## Documentation
 

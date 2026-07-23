@@ -22,11 +22,14 @@
         <ffi.dll>${ffi.crate.dir}/target/release/rust_webrtc_ffi.dll</ffi.dll>
         <jextract.home>C:\Users\Kinsley\jextract-25</jextract.home>
         <generated.sources.dir>${project.build.directory}/generated-sources/jextract</generated.sources.dir>
+        <javafx.version>25</javafx.version>
     </properties>
 
     <modules>
         <module>library</module>
         <module>demo-code</module>
+        <module>desktop</module>
+        <module>demo-desktop</module>
     </modules>
 
     <dependencyManagement>

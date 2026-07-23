@@ -16,6 +16,7 @@ This directory contains the full documentation for the JavaRust-Webrtc library.
 | [Trickle ICE](trickle-ice.md) | Candidate trickling, gathering states |
 | [Port Allocator](port-allocator.md) | Port range filtering, allocator flags |
 | [Statistics](stats.md) | Fetching and reading connection stats |
+| [Desktop Module](desktop.md) | Camera, microphone, JavaFX UI, device access |
 | [Deployment](deployment.md) | Production deployment (coming soon) |
 
 ## Quick Start

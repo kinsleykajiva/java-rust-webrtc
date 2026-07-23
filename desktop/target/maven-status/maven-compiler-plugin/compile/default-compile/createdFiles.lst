@@ -1,0 +1,9 @@
+io\github\kinsleykajiva\webrtc\desktop\audio\AudioCapture.class
+io\github\kinsleykajiva\webrtc\desktop\ui\VideoCallWindow$1.class
+io\github\kinsleykajiva\webrtc\desktop\device\AudioDevice.class
+io\github\kinsleykajiva\webrtc\desktop\video\VideoCapture.class
+io\github\kinsleykajiva\webrtc\desktop\device\AudioDevice$DeviceType.class
+io\github\kinsleykajiva\webrtc\desktop\BitrateConfig.class
+io\github\kinsleykajiva\webrtc\desktop\ui\VideoCallWindow.class
+io\github\kinsleykajiva\webrtc\desktop\device\DeviceEnumerator.class
+io\github\kinsleykajiva\webrtc\desktop\device\VideoDevice.class
