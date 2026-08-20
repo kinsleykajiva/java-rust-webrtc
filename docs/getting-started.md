@@ -6,10 +6,10 @@ This guide walks you through building the library from source and running your f
 
 You need these tools installed before anything else:
 
-- **Java 25** -- GraalVM CE 25 or any JDK 25 build. The FFM API (`java.lang.foreign`) is final in Java 22+, and jextract is bundled with JDK 25.
-- **Rust** -- 1.80 or newer, with the `stable-x86_64-pc-windows-msvc` toolchain (or your platform equivalent).
+- **Java 22+** -- The FFM API (`java.lang.foreign`) is final in Java 22+, and jextract is bundled with JDK 25. The build targets JDK 25.
+- **Rust** -- 1.80 or newer, `stable` toolchain for your platform.
 - **Maven** -- 3.8 or newer.
-- **jextract** -- Version 25. On Windows, this is typically at `C:\Users\<you>\jextract-25\bin\jextract.ps1`. If you installed the JDK 25 EA bundle, jextract is included.
+- **jextract** -- Version 25. The launcher is `bin/jextract` on macOS/Linux and `bin/jextract.bat` on Windows (inside your jextract distribution). If you installed the JDK 25 EA bundle, jextract is included.
 
 ### Verifying your setup
 
@@ -29,7 +29,7 @@ cd rust-webrtc-ffi
 cargo build --release
 ```
 
-This produces `rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll` on Windows (or `.so` / `.dylib` on other platforms).
+This produces `rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll` on Windows, `librust_webrtc_ffi.dylib` on macOS, or `librust_webrtc_ffi.so` on Linux.
 
 The first build takes a while -- it compiles the entire webrtc-rs stack including ICE, DTLS, SRTP, SCTP, and all the codecs. Subsequent builds are much faster thanks to Cargo's incremental compilation.
 
@@ -47,39 +47,43 @@ This does three things:
 2. Compiles the library module (`library/`)
 3. Compiles the demo module (`demo-code/`)
 
+> **The jextract bindings are platform-specific.** jextract bakes the target C ABI into the generated `webrtc_ffi_h` code (for example, whether `C_LONG` is 32-bit or 64-bit, and how `size_t`/`uintptr_t` map). On Windows `long` is 32-bit; on macOS/Linux it is 64-bit. **You must regenerate the bindings on the OS you build/run on** -- reusing bindings generated on a different OS fails at class load with a `ClassCastException` in `webrtc_ffi_h$shared`. A plain IDE "Make"/compile does *not* re-run jextract, so after switching platforms (or pulling someone else's generated code) do a full `mvn clean install` so the bindings are regenerated for your OS.
+
 The `pom.xml` in the `library/` module defines exactly which FFI functions to include via `--include-function` arguments to jextract. If you add new FFI functions on the Rust side, you need to add corresponding entries there.
 
 ## Running a Demo
 
-Before running any demo, copy the native DLL to the demo-code directory:
+Before running any demo, copy the native library to the demo-code directory (use the name for your platform):
 
 ```bash
-cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/
+cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.dylib demo-code/   # macOS
+# cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/      # Windows
+# cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.so demo-code/    # Linux
 ```
 
-Then run a demo:
+Then run a demo (use `:` as the classpath separator on macOS/Linux, `;` on Windows):
 
 ```bash
 cd demo-code
 
 # Basic data channel demo
 java --enable-native-access=ALL-UNNAMED \
-     -cp "target/classes;target/dependency/*;." \
+     -cp "target/classes:target/dependency/*:." \
      io.github.kinsleykajiva.Main
 
 # Trickle ICE demo (host mode, loopback)
 java --enable-native-access=ALL-UNNAMED \
-     -cp "target/classes;target/dependency/*;." \
+     -cp "target/classes:target/dependency/*:." \
      io.github.kinsleykajiva.TrickleIceDemo host
 
 # Trickle ICE with port range and flags
 java --enable-native-access=ALL-UNNAMED \
-     -cp "target/classes;target/dependency/*;." \
+     -cp "target/classes:target/dependency/*:." \
      io.github.kinsleykajiva.TrickleIceDemo flags
 
 # Statistics demo
 java --enable-native-access=ALL-UNNAMED \
-     -cp "target/classes;target/dependency/*;." \
+     -cp "target/classes:target/dependency/*:." \
      io.github.kinsleykajiva.StatsDemo
 ```
 
@@ -92,9 +96,9 @@ The `--enable-native-access=ALL-UNNAMED` flag is required because jextract-gener
 1. Open the project root as a Maven project.
 2. IntelliJ should automatically detect the `library` and `demo-code` modules.
 3. Make sure Project SDK is set to Java 25.
-4. Before running demos from the IDE, run `mvn -pl library process-classes` so that the jextract-generated bindings and the native DLL are available in the classpath.
+4. Before running demos from the IDE, run `mvn -pl library process-classes` so that the jextract-generated bindings and the native library are available in the classpath.
 
-If you get `UnsatisfiedLinkError` when running from IntelliJ, the DLL is not on the java.library.path. Make sure `rust_webrtc_ffi.dll` is either in the working directory or add `-Djava.library.path=<path-to-dll>` to your run configuration.
+If you get `UnsatisfiedLinkError` when running from IntelliJ, the native library is not on the java.library.path. Make sure `<native-lib>` (e.g. `librust_webrtc_ffi.dylib`) is either in the working directory, add `-Djava.library.path=<path>` to your run configuration, or pass `-Dwebrtc.native.lib=<absolute-path>`.
 
 ## Troubleshooting
 
@@ -102,10 +106,16 @@ If you get `UnsatisfiedLinkError` when running from IntelliJ, the DLL is not on 
 Make sure the Rust FFI library has been built first (`cargo build --release` in `rust-webrtc-ffi/`). The C header is generated by cbindgen during the Rust build.
 
 **jextract not found**
-Set the `jextract.home` property in the root `pom.xml` to your jextract installation path.
+Set the `jextract.home` property in the root `pom.xml` to your jextract installation path (or pass `-Djextract.home=...`). On macOS/Linux the build uses `bin/jextract`; on Windows it uses `bin/jextract.bat`. Override with `-Djextract.executable=...` if needed.
+
+**`ClassCastException` in `webrtc_ffi_h$shared` (`C_LONG` cannot be cast to `ValueLayout.OfInt`)**
+The jextract bindings were generated on a different OS. Regenerate them for your platform with a full `mvn clean install` (see the platform-specific bindings note above). A clean build removes the stale generated sources before regenerating.
 
 **UnsatisfiedLinkError at runtime**
-The `rust_webrtc_ffi.dll` must be on the java.library.path or in the working directory. Copy it to `demo-code/` before running.
+The native library (`rust_webrtc_ffi.dll` / `librust_webrtc_ffi.dylib` / `librust_webrtc_ffi.so`) must be loadable. It is extracted from the jar automatically; if that fails, copy it next to your app or pass `-Dwebrtc.native.lib=<absolute-path>`.
+
+**"code signature invalid" / library cannot be loaded on macOS**
+If the JVM refuses to load the dylib (common under a hardened runtime), ad-hoc sign it: `codesign --force --sign - librust_webrtc_ffi.dylib`. The Maven build does this automatically on macOS.
 
 **"runtime within runtime" panic**
 This happens when a Rust callback tries to call `block_on` on the same tokio runtime it's running on. This is a known constraint -- the library handles this by using fire-and-forget spawns for re-entrant calls. If you see this, it means a callback path was not properly handled.

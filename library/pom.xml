@@ -60,11 +60,8 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
-                            <executable>pwsh</executable>
+                            <executable>${jextract.executable}</executable>
                             <arguments>
-                                <argument>-NoProfile</argument>
-                                <argument>-Command</argument>
-                                <argument>&quot;&amp; '${jextract.home}/bin/jextract.ps1'&quot;</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_init</argument>
                                 <argument>--include-function</argument>
@@ -205,7 +202,7 @@
                                 <resource>
                                     <directory>${ffi.crate.dir}/target/release</directory>
                                     <includes>
-                                        <include>rust_webrtc_ffi.dll</include>
+                                        <include>${ffi.lib.name}</include>
                                     </includes>
                                 </resource>
                             </resources>
@@ -225,4 +222,46 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- On macOS, the cargo-built dylib must carry at least an ad-hoc code
+             signature before the JVM can dlopen it inside a hardened runtime.
+             This is best-effort: a failure here does not fail the build. -->
+        <profile>
+            <id>macos-codesign</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.5.0</version>
+                        <executions>
+                            <execution>
+                                <id>codesign-dylib</id>
+                                <phase>generate-sources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>codesign</executable>
+                                    <ignoreExitCode>true</ignoreExitCode>
+                                    <arguments>
+                                        <argument>--force</argument>
+                                        <argument>--sign</argument>
+                                        <argument>-</argument>
+                                        <argument>${ffi.crate.dir}/target/release/${ffi.lib.name}</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -150,8 +150,7 @@ public class AudioCapture implements AutoCloseable {
             );
 
             running.set(true);
-            captureThread = new Thread(() -> captureLoop(track), "AudioCapture-" + device.name());
-            captureThread.setDaemon(true);
+            captureThread = Thread.ofVirtual().name("AudioCapture-" + device.name()).unstarted(() -> captureLoop(track));
             captureThread.start();
 
             return Optional.of(track);

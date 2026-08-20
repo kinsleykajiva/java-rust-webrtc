@@ -12,17 +12,17 @@ This library is under active development. The core peer connection, ICE, data ch
 
 | Tool | Version |
 |------|---------|
-| Java | 25+ (GraalVM CE 25 or any JDK 25 build) |
-| Rust | 1.80+ with `stable-x86_64-pc-windows-msvc` target |
+| Java | 22+ (FFM is final in 22; the build targets JDK 25) |
+| Rust | 1.80+ (`stable` for your platform) |
 | Maven | 3.8+ |
-| jextract | 25 (bundled with JDK 25 EA, or standalone build) |
+| jextract | 25 (bundled with JDK 25, or standalone build) |
 
-Windows is the primary development platform. Linux and macOS support is planned.
+The library is cross-platform: Windows, macOS, and Linux are supported. The native artifact name differs per platform (`rust_webrtc_ffi.dll` on Windows, `librust_webrtc_ffi.dylib` on macOS, `librust_webrtc_ffi.so` on Linux) and is selected automatically.
 
 ## Building
 
 ```bash
-# Build the Rust FFI library (creates rust_webrtc_ffi.dll)
+# Build the Rust FFI library (creates the platform-native shared object)
 cd rust-webrtc-ffi
 cargo build --release
 cd ..
@@ -31,17 +31,19 @@ cd ..
 mvn clean install
 ```
 
-The Rust build produces `rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll`. The Maven build uses jextract to generate FFM bindings from the C header and compiles everything together.
+The Rust build produces `rust-webrtc-ffi/target/release/<native lib>` (e.g. `librust_webrtc_ffi.dylib` on macOS). The Maven build uses jextract to generate FFM bindings from the C header and compiles everything together.
 
 ## Running Demos
 
 ```bash
-# Copy the native DLL to the demo-code directory
-cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/
+# Copy the native library to the demo-code directory (use the name for your OS)
+cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.dylib demo-code/   # macOS
+# cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/      # Windows
+# cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.so demo-code/    # Linux
 
-# Run a demo
+# Run a demo (use ':' as the classpath separator on macOS/Linux, ';' on Windows)
 cd demo-code
-java --enable-native-access=ALL-UNNAMED -cp "target/classes;target/dependency/*;." io.github.kinsleykajiva.Main
+java --enable-native-access=ALL-UNNAMED -cp "target/classes:target/dependency/*:." io.github.kinsleykajiva.Main
 ```
 
 ### Available Demos
@@ -80,13 +82,13 @@ Java Application
   Java FFM API  (io.github.kinsleykajiva.webrtc.*)
        |
        v
-  jextract Bindings  (webrtc_ffi_h.java, generated)
-       |
-       v
-  rust_webrtc_ffi.dll  (C ABI, blocking calls)
-       |
-       v
-  webrtc-rs  (ICE, DTLS, SRTP, SCTP, RTP/RTCP)
+   jextract Bindings  (webrtc_ffi_h.java, generated)
+        |
+        v
+   rust_webrtc_ffi  (C ABI, blocking calls; .dll / .dylib / .so per platform)
+        |
+        v
+   webrtc-rs  (ICE, DTLS, SRTP, SCTP, RTP/RTCP)
 ```
 
 The project has two main layers:

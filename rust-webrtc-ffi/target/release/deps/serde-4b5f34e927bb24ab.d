@@ -1,0 +1,14 @@
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/deps/serde-4b5f34e927bb24ab.d: /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/build/serde-3d740ed4d8f73a6f/out/private.rs
+
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/deps/libserde-4b5f34e927bb24ab.rlib: /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/build/serde-3d740ed4d8f73a6f/out/private.rs
+
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/deps/libserde-4b5f34e927bb24ab.rmeta: /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/build/serde-3d740ed4d8f73a6f/out/private.rs
+
+/Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/xuser/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/build/serde-3d740ed4d8f73a6f/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/build/serde-3d740ed4d8f73a6f/out

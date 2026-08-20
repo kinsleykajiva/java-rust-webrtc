@@ -20,6 +20,10 @@
         <ffi.crate.dir>${maven.multiModuleProjectDirectory}/rust-webrtc-ffi</ffi.crate.dir>
         <ffi.header>${ffi.crate.dir}/webrtc_ffi.h</ffi.header>
         <ffi.dll>${ffi.crate.dir}/target/release/rust_webrtc_ffi.dll</ffi.dll>
+        <!-- Platform-specific native library artifact name (overridden per OS profile). -->
+        <ffi.lib.name>rust_webrtc_ffi.dll</ffi.lib.name>
+        <!-- jextract launcher (overridden per OS profile). -->
+        <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
         <jextract.home>C:\Users\Kinsley\jextract-25</jextract.home>
         <generated.sources.dir>${project.build.directory}/generated-sources/jextract</generated.sources.dir>
         <javafx.version>25</javafx.version>
@@ -79,4 +83,45 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Per-OS profiles select the native artifact name and the jextract
+             launcher so the same reactor builds on Windows, macOS, and Linux. -->
+        <profile>
+            <id>platform-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <ffi.lib.name>rust_webrtc_ffi.dll</ffi.lib.name>
+                <jextract.executable>${jextract.home}/bin/jextract.bat</jextract.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>platform-macos</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <ffi.lib.name>librust_webrtc_ffi.dylib</ffi.lib.name>
+                <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
+            </properties>
+        </profile>
+        <profile>
+            <id>platform-linux</id>
+            <activation>
+                <os>
+                    <name>linux</name>
+                </os>
+            </activation>
+            <properties>
+                <ffi.lib.name>librust_webrtc_ffi.so</ffi.lib.name>
+                <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
+            </properties>
+        </profile>
+    </profiles>
 </project>

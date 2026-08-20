@@ -15,9 +15,9 @@ desktop  (device access, capture, UI)
       v
 library  (pure WebRTC, FFI to Rust)
       |
-      v
-rust_webrtc_ffi.dll
-```
+       v
+ rust_webrtc_ffi  (.dll / .dylib / .so per platform)
+ ```
 
 ## Dependencies
 

@@ -18,7 +18,7 @@ The library is split into three layers:
             |
             v
 +---------------------------+
-|   rust_webrtc_ffi.dll     |   (C ABI: no_mangle extern "C" functions)
+|   rust_webrtc_ffi         |   (C ABI: no_mangle extern "C" functions; .dll/.dylib/.so)
 +---------------------------+
             |
             v

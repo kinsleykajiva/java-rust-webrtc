@@ -141,8 +141,7 @@ public class VideoCapture implements AutoCloseable {
             );
 
             running.set(true);
-            captureThread = new Thread(() -> captureLoop(track), "VideoCapture-" + device.name());
-            captureThread.setDaemon(true);
+            captureThread = Thread.ofVirtual().name("VideoCapture-" + device.name()).unstarted(() -> captureLoop(track));
             captureThread.start();
 
             return Optional.of(track);

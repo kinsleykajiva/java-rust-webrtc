@@ -27,9 +27,15 @@ public final class DataChannel {
 
     static MemorySegment upcallMessage(MessageCallback cb) {
         try {
+            // The callback's length parameter is a C uintptr_t, which jextract maps to
+            // C_LONG. Its carrier is `int` on Windows (where C long is 32-bit) but `long`
+            // on macOS/Linux (LP64). The upcall MethodHandle type must match exactly, so
+            // pick the handler whose length parameter matches the platform's C_LONG.
+            Class<?> lenType = webrtc_ffi_h.C_LONG.carrier();
+            String handler = (lenType == long.class) ? "msgCbLong" : "msgCbInt";
             MethodHandle target = MethodHandles.lookup().findStatic(
-                    DataChannel.class, "msgCb",
-                    MethodType.methodType(void.class, MessageCallback.class, short.class, MemorySegment.class, int.class));
+                    DataChannel.class, handler,
+                    MethodType.methodType(void.class, MessageCallback.class, short.class, MemorySegment.class, lenType));
             MethodHandle bound = MethodHandles.insertArguments(target, 0, cb);
             FunctionDescriptor desc = FunctionDescriptor.ofVoid(
                     webrtc_ffi_h.C_SHORT, webrtc_ffi_h.C_POINTER, webrtc_ffi_h.C_LONG);
@@ -52,11 +58,21 @@ public final class DataChannel {
         }
     }
 
-    private static void msgCb(MessageCallback cb, short id, MemorySegment data, int len) {
+    private static void msgCbInt(MessageCallback cb, short id, MemorySegment data, int len) {
         byte[] bytes = new byte[len < 0 ? 0 : len];
         if (len > 0 && data != null && data.address() != 0) {
             MemorySegment.copy(data.reinterpret(len), java.lang.foreign.ValueLayout.JAVA_BYTE,
                     0, bytes, 0, len);
+        }
+        cb.onMessage(id, bytes);
+    }
+
+    private static void msgCbLong(MessageCallback cb, short id, MemorySegment data, long len) {
+        int n = (int) len;
+        byte[] bytes = new byte[n < 0 ? 0 : n];
+        if (len > 0 && data != null && data.address() != 0) {
+            MemorySegment.copy(data.reinterpret(len), java.lang.foreign.ValueLayout.JAVA_BYTE,
+                    0, bytes, 0, n);
         }
         cb.onMessage(id, bytes);
     }

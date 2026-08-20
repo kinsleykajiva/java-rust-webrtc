@@ -1,5 +1,5 @@
-C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\rust_webrtc_ffi.d: src\lib.rs
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/deps/rust_webrtc_ffi.d: src/lib.rs
 
-C:\Users\Kinsley\IdeaProjects\JavaRust-Webrtc\rust-webrtc-ffi\target\release\deps\rust_webrtc_ffi.dll: src\lib.rs
+/Users/xuser/IdeaProjects/java-rust-webrtc/rust-webrtc-ffi/target/release/deps/librust_webrtc_ffi.dylib: src/lib.rs
 
-src\lib.rs:
+src/lib.rs:

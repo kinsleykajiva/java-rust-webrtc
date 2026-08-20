@@ -26,9 +26,11 @@ If you just want to get something running:
 ```bash
 cargo build --release          # in rust-webrtc-ffi/
 mvn clean install              # in project root
-cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/
+cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.dylib demo-code/   # macOS
+# cp rust-webrtc-ffi/target/release/rust_webrtc_ffi.dll demo-code/       # Windows
+# cp rust-webrtc-ffi/target/release/librust_webrtc_ffi.so demo-code/     # Linux
 java --enable-native-access=ALL-UNNAMED \
-     -cp "demo-code/target/classes;demo-code/target/dependency/*;." \
+     -cp "demo-code/target/classes:demo-code/target/dependency/*:." \
      io.github.kinsleykajiva.Main
 ```
 
