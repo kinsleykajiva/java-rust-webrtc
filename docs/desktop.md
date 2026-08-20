@@ -28,7 +28,8 @@ library  (pure WebRTC, FFI to Rust)
 | `javafx-media` | Media playback (receiving remote video) |
 | `javafx-graphics` | Canvas for local video preview |
 | `javafx-swing` | SwingFXUtils for BufferedImage <-> WritableImage conversion |
-| `webcam-capture` (sarxos) | Camera device discovery and frame capture |
+| `webcam-capture` (sarxos) | Camera device discovery and frame capture (Windows/Linux) |
+| `javacv` / `opencv-platform` | Camera capture on macOS (OpenCV AVFoundation backend; webcam-capture's QTKit native is removed from modern macOS, so it is used as a fallback there) |
 
 Audio capture uses `javax.sound.sampled.TargetDataLine` -- part of the JDK, no extra dependency needed.
 
@@ -50,6 +51,16 @@ List<VideoDevice> cameras = DeviceEnumerator.videoDevices();
 AudioDevice mic = DeviceEnumerator.defaultAudioInput().orElseThrow();
 VideoDevice cam = DeviceEnumerator.defaultVideoDevice().orElseThrow();
 ```
+
+> **macOS camera capture.** `webcam-capture` 0.3.12 ships a native grabber that links against Apple's
+> QTKit framework, which was **removed in macOS 10.15 (Catalina)**, so it cannot load on modern macOS.
+> On macOS, `DeviceEnumerator.videoDevices()` and `VideoCapture` automatically fall back to
+> **JavaCV / OpenCV** (AVFoundation backend). To run camera demos on macOS you must:
+> 1. Launch with `--enable-native-access=ALL-UNNAMED` (JavaCV loads a JNI native).
+> 2. Set the environment variable `OPENCV_AVFOUNDATION_SKIP_AUTH=1` so OpenCV does not try to pop a
+>    camera-authorization dialog on a background thread (which fails off the main run loop).
+> 3. Grant **Camera** access to the Java/IntelliJ process in **System Settings → Privacy & Security → Camera**.
+> If camera access is not granted, enumeration returns no devices and capture fails gracefully (no crash).
 
 ## Audio Capture
 

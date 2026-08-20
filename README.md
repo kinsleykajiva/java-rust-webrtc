@@ -46,6 +46,8 @@ cd demo-code
 java --enable-native-access=ALL-UNNAMED -cp "target/classes:target/dependency/*:." io.github.kinsleykajiva.Main
 ```
 
+`mvn clean install -Djextract.home=/Users/xuser/jextract-25`
+
 ### Available Demos
 
 | Demo | Description |

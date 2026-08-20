@@ -7,6 +7,7 @@ import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.TargetDataLine;
 import com.github.sarxos.webcam.Webcam;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
 
 /**
  * Enumerates audio and video capture/playback devices available on the system.
@@ -96,16 +97,69 @@ public final class DeviceEnumerator {
      */
     public static List<VideoDevice> videoDevices() {
         List<VideoDevice> devices = new ArrayList<>();
-        for (Webcam webcam : Webcam.getWebcams()) {
-            devices.add(new VideoDevice(
-                webcam.getName(),
-                webcam.getName(),
-                webcam.getViewSize().width,
-                webcam.getViewSize().height,
-                webcam.getFPS()
-            ));
+        boolean webcamOk = false;
+        try {
+            for (Webcam webcam : Webcam.getWebcams()) {
+                devices.add(new VideoDevice(
+                    webcam.getName(),
+                    webcam.getName(),
+                    webcam.getViewSize().width,
+                    webcam.getViewSize().height,
+                    webcam.getFPS()
+                ));
+                webcamOk = true;
+            }
+        } catch (Throwable t) {
+            // webcam-capture's native grabber (OpenIMAJGrabber) links against Apple's
+            // QTKit framework, which was removed in macOS 10.15 (Catalina). On modern
+            // macOS the native library cannot be loaded, so camera enumeration is
+            // unavailable. Fall back to JavaCV (AVFoundation) below.
+            warnWebcamUnavailable(t);
+        }
+        if (!webcamOk) {
+            devices.addAll(javaCvVideoDevices());
         }
         return devices;
+    }
+
+    /**
+     * Detects cameras through JavaCV's OpenCV grabber (AVFoundation backend on
+     * macOS). Used as a fallback when webcam-capture cannot enumerate devices.
+     *
+     * @return list of AVFoundation cameras, possibly empty
+     */
+    private static List<VideoDevice> javaCvVideoDevices() {
+        List<VideoDevice> devices = new ArrayList<>();
+        OpenCVFrameGrabber grabber = null;
+        try {
+            grabber = new OpenCVFrameGrabber(0);
+            grabber.start();
+            devices.add(new VideoDevice(
+                "avfoundation://0",
+                "AVFoundation Camera (macOS)",
+                640, 480, 30.0));
+        } catch (Throwable t) {
+            // No accessible camera via AVFoundation (none connected, or OpenCV native missing).
+        } finally {
+            if (grabber != null) {
+                try { grabber.stop(); } catch (Throwable ignore) {}
+                try { grabber.release(); } catch (Throwable ignore) {}
+            }
+        }
+        return devices;
+    }
+
+    private static volatile boolean webcamWarned = false;
+
+    private static void warnWebcamUnavailable(Throwable t) {
+        if (webcamWarned) {
+            return;
+        }
+        webcamWarned = true;
+        System.err.println("[DeviceEnumerator] Webcam enumeration unavailable on this platform: "
+                + t.getClass().getSimpleName() + ": " + t.getMessage());
+        System.err.println("[DeviceEnumerator] webcam-capture's native grabber requires the removed "
+                + "QTKit framework on macOS 10.15+; camera capture will be unavailable here.");
     }
 
     /**

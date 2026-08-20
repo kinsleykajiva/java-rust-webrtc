@@ -14,6 +14,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import javax.imageio.ImageIO;
+import org.bytedeco.javacv.Frame;
+import org.bytedeco.javacv.Java2DFrameConverter;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
 
 /**
  * Captures video from a webcam and feeds it into a WebRTC {@link TrackLocal}.
@@ -65,6 +68,7 @@ public class VideoCapture implements AutoCloseable {
     private final BitrateConfig config;
     private final AtomicBoolean running = new AtomicBoolean(false);
     private Webcam webcam;
+    private OpenCVFrameGrabber javaCvGrabber;
     private Thread captureThread;
     private Consumer<BufferedImage> onFrame;
 
@@ -106,7 +110,7 @@ public class VideoCapture implements AutoCloseable {
         }
 
         try {
-            // Find the webcam matching our device
+            // Find the webcam matching our device (webcam-capture; works on Windows/Linux)
             webcam = null;
             for (Webcam w : Webcam.getWebcams()) {
                 if (w.getName().equals(device.name())) {
@@ -115,40 +119,105 @@ public class VideoCapture implements AutoCloseable {
                 }
             }
 
-            if (webcam == null) {
-                System.err.println("Webcam not found: " + device.name());
-                return Optional.empty();
+            if (webcam != null) {
+                // Set custom resolution if different from default
+                Dimension targetSize = new Dimension(config.getVideoWidth(), config.getVideoHeight());
+                webcam.setViewSize(targetSize);
+
+                if (!webcam.isOpen()) {
+                    webcam.open();
+                }
+
+                TrackLocal track = createTrack();
+                running.set(true);
+                captureThread = Thread.ofVirtual().name("VideoCapture-" + device.name()).unstarted(() -> captureLoop(track));
+                captureThread.start();
+                return Optional.of(track);
             }
-
-            // Set custom resolution if different from default
-            Dimension targetSize = new Dimension(config.getVideoWidth(), config.getVideoHeight());
-            webcam.setViewSize(targetSize);
-
-            if (!webcam.isOpen()) {
-                webcam.open();
-            }
-
-            TrackLocal track = TrackLocal.create(
-                MediaKind.VIDEO,
-                "video-stream",
-                "camera-track",
-                device.name(),
-                TrackLocal.randomSsrc(),
-                MimeTypes.VIDEO_VP8,
-                90000,  // VP8 clock rate
-                0,
-                ""
-            );
-
-            running.set(true);
-            captureThread = Thread.ofVirtual().name("VideoCapture-" + device.name()).unstarted(() -> captureLoop(track));
-            captureThread.start();
-
-            return Optional.of(track);
-
         } catch (Exception e) {
-            System.err.println("Failed to open webcam: " + e.getMessage());
+            System.err.println("webcam-capture unavailable (" + e.getMessage() + "); falling back to JavaCV/AVFoundation");
+        }
+
+        // Fallback: JavaCV / AVFoundation (macOS, where webcam-capture's QTKit native is gone)
+        try {
+            return startJavaCv();
+        } catch (Exception e) {
+            System.err.println("Failed to open camera via JavaCV: " + e.getMessage());
             return Optional.empty();
+        }
+    }
+
+    private TrackLocal createTrack() {
+        return TrackLocal.create(
+            MediaKind.VIDEO,
+            "video-stream",
+            "camera-track",
+            device.name(),
+            TrackLocal.randomSsrc(),
+            MimeTypes.VIDEO_VP8,
+            90000,  // VP8 clock rate
+            0,
+            ""
+        );
+    }
+
+    private Optional<TrackLocal> startJavaCv() throws Exception {
+        OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(0);
+        grabber.setImageWidth(config.getVideoWidth());
+        grabber.setImageHeight(config.getVideoHeight());
+        grabber.setFrameRate(config.getVideoFps());
+        grabber.start();
+        javaCvGrabber = grabber;
+
+        TrackLocal track = createTrack();
+        running.set(true);
+        captureThread = Thread.ofVirtual().name("VideoCapture-AVFoundation").unstarted(() -> javaCvLoop(track));
+        captureThread.start();
+        return Optional.of(track);
+    }
+
+    private void javaCvLoop(TrackLocal track) {
+        long frameIntervalMs = 1000 / config.getVideoFps();
+        Java2DFrameConverter converter = new Java2DFrameConverter();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        while (running.get()) {
+            long frameStart = System.currentTimeMillis();
+
+            Frame frame;
+            try {
+                frame = javaCvGrabber.grab();
+            } catch (Exception e) {
+                System.err.println("Failed to grab frame: " + e.getMessage());
+                continue;
+            }
+            if (frame != null && frame.image != null) {
+                BufferedImage buf = converter.getBufferedImage(frame);
+                if (buf != null) {
+                    baos.reset();
+                    try {
+                        ImageIO.write(buf, "jpg", baos);
+                        byte[] jpegBytes = baos.toByteArray();
+                        track.writeSample(0, jpegBytes, (int) frameIntervalMs);
+                    } catch (Exception e) {
+                        System.err.println("Failed to encode frame: " + e.getMessage());
+                    }
+                    if (onFrame != null) {
+                        onFrame.accept(buf);
+                    }
+                }
+            }
+
+            long elapsed = System.currentTimeMillis() - frameStart;
+            long sleepMs = frameIntervalMs - elapsed;
+            if (sleepMs > 0) {
+                try {
+                    Thread.sleep(sleepMs);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
     }
 
@@ -207,7 +276,12 @@ public class VideoCapture implements AutoCloseable {
             }
         }
         if (webcam != null && webcam.isOpen()) {
-            webcam.close();
+            try { webcam.close(); } catch (Exception ignore) {}
+        }
+        if (javaCvGrabber != null) {
+            try { javaCvGrabber.stop(); } catch (Exception ignore) {}
+            try { javaCvGrabber.release(); } catch (Exception ignore) {}
+            javaCvGrabber = null;
         }
     }
 

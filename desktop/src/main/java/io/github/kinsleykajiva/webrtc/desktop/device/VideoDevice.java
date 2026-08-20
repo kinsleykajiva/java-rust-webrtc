@@ -3,9 +3,9 @@ package io.github.kinsleykajiva.webrtc.desktop.device;
 /**
  * Represents a video capture device (webcam) available on the system.
  *
- * <p>Video devices are enumerated through the webcam-capture library. Each device
- * wraps a {@code com.github.sarxos.webcam.Webcam} and provides resolution and
- * frame rate information.</p>
+ * <p>Video devices are enumerated through the webcam-capture library on Windows/Linux,
+ * and through JavaCV/OpenCV (AVFoundation backend) on macOS, where webcam-capture's
+ * QTKit-based native can no longer load.</p>
  *
  * @param id         unique identifier (device name or hash)
  * @param name       human-readable display name

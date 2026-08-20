@@ -15,6 +15,8 @@
     <properties>
         <javafx.version>25</javafx.version>
         <webcam.capture.version>0.3.12</webcam.capture.version>
+        <javacv.version>1.5.11</javacv.version>
+        <opencv.version>4.10.0-1.5.11</opencv.version>
     </properties>
 
     <dependencies>
@@ -47,11 +49,25 @@
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- Webcam capture (camera device access) -->
+        <!-- Webcam capture (camera device access; works on Windows/Linux) -->
         <dependency>
             <groupId>com.github.sarxos</groupId>
             <artifactId>webcam-capture</artifactId>
             <version>${webcam.capture.version}</version>
+        </dependency>
+
+        <!-- JavaCV / OpenCV: AVFoundation backend for camera capture on macOS,
+             where webcam-capture's QTKit-based native no longer loads. Used as
+             a fallback when webcam-capture cannot find a device. -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacv</artifactId>
+            <version>${javacv.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>opencv-platform</artifactId>
+            <version>${opencv.version}</version>
         </dependency>
 
         <!-- Logging -->
