@@ -991,13 +991,33 @@ fn spawn_data_channel_poller(
                         cb(id, payload.as_ptr(), payload.len());
                     }
                 }
-                Some(DataChannelEvent::OnClose) | None => {
+                Some(DataChannelEvent::OnClose) => {
                     if let Some(cb) =
                         callbacks.lock().unwrap().get(&id).and_then(|c| c.on_close)
                     {
                         cb(id);
                     }
                     break;
+                }
+                // `dc.poll()` returns `None` when no event is currently available
+                // (the channel is still pending/open), NOT only when it has closed.
+                // Breaking here would kill the poller before the channel opens (or
+                // between messages), so keep polling. Only treat a `None` as closure
+                // once the channel has already opened, to avoid spinning on a channel
+                // that never opens.
+                None => {
+                    if opened {
+                        if let Some(cb) = callbacks
+                            .lock()
+                            .unwrap()
+                            .get(&id)
+                            .and_then(|c| c.on_close)
+                        {
+                            cb(id);
+                        }
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
                 }
                 // OnError / OnClosing / OnBufferedAmountLow / OnBufferedAmountHigh:
                 // keep polling; these do not terminate the channel.
