@@ -79,6 +79,8 @@
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_config_set_allocator_flags</argument>
                                 <argument>--include-function</argument>
+                                <argument>webrtc_ffi_config_set_rtcp_forwarder</argument>
+                                <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_create</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_peer_close</argument>
@@ -118,6 +120,8 @@
                                 <argument>webrtc_ffi_add_transceiver_from_kind_with_encoding</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_get_stats</argument>
+                                <argument>--include-function</argument>
+                                <argument>webrtc_ffi_poll_rtcp</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_track_remote_ssrcs</argument>
                                 <argument>--include-function</argument>

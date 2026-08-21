@@ -4,3 +4,8 @@ JavaRust-Webrtc.iml
 *.class
 /tmp_error.txt
 /tmp_output.txt
+
+# Build outputs
+**/target/
+!**/src/**/target/
+
