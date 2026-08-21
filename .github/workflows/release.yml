@@ -55,6 +55,7 @@ jobs:
       - name: Place binaries
         shell: bash
         run: |
+          mkdir -p native/windows-x86_64 native/osx-aarch_64 native/linux-x86_64
           cp artifacts/native-windows-x86_64/rust_webrtc_ffi.dll       native/windows-x86_64/
           cp artifacts/native-osx-aarch_64/librust_webrtc_ffi.dylib   native/osx-aarch_64/
           cp artifacts/native-linux-x86_64/librust_webrtc_ffi.so      native/linux-x86_64/
