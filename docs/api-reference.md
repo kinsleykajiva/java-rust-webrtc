@@ -48,6 +48,10 @@ public final class Configuration implements AutoCloseable {
     /** Set port allocator flags (bitmask of PortAllocatorFlags constants). */
     public Configuration setAllocatorFlags(int flags);
 
+    /** Install the built-in RTCP forwarder interceptor so the app can read
+     *  incoming RTCP via PeerConnection.pollRtcp(). */
+    public Configuration setRtcpForwarder(boolean enabled);
+
     public void close();
 }
 ```
@@ -115,6 +119,18 @@ public final class PeerConnection implements AutoCloseable {
 
     /** Add a transceiver (from kind: audio/video). */
     public int addTransceiverFromKind(MediaKind kind, TransceiverDirection direction);
+
+    /** Add a transceiver with a single explicit encoding (one simulcast layer).
+     *  Pass a rid (e.g. "q"/"h"/"f") and ssrc to identify the layer; mimeType like
+     *  "video/VP8", a clockRate (e.g. 90000), and channels (0 for video). */
+    public void addTransceiverFromKindWithEncoding(MediaKind kind, TransceiverDirection direction,
+                                                    String rid, long ssrc, String mimeType,
+                                                    long clockRate, int channels);
+
+    /** Drain and return captured incoming RTCP as a JSON array of hex-encoded packet
+     *  blobs. Returns "[]" when no RTCP was captured or the RTCP forwarder was not
+     *  enabled on the configuration. Requires setRtcpForwarder(true) at config time. */
+    public String pollRtcp();
 
     /** Fetch connection statistics. */
     public StatsReport getStats();

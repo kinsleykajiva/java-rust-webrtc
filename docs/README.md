@@ -13,11 +13,17 @@ This directory contains the full documentation for the JavaRust-Webrtc library.
 | [Media Tracks](media-tracks.md) | Audio/video tracks, codecs, RTP |
 | [Data Channels](data-channels.md) | Reliable data messaging between peers |
 | [Play from Disk](play-from-disk.md) | Reading media files and sending them over WebRTC |
+| [Save to Disk (AV1)](save-to-disk-av1.md) | Receiving AV1 RTP, depacketizing, writing IVF |
+| [Simulcast](simulcast.md) | Multi-layer publishing (two approaches) |
+| [RTCP Processing](rtcp-processing.md) | Observing incoming RTCP via the forwarder interceptor |
+| [RTP-to-WebRTC](rtp-to-webrtc.md) | Bridging raw RTP into a peer connection |
+| [Media Examples](media-examples.md) | Index of the seven webrtc-rs media example demos |
 | [Trickle ICE](trickle-ice.md) | Candidate trickling, gathering states |
 | [Port Allocator](port-allocator.md) | Port range filtering, allocator flags |
 | [Statistics](stats.md) | Fetching and reading connection stats |
 | [Desktop Module](desktop.md) | Camera, microphone, JavaFX UI, device access |
 | [Deployment](deployment.md) | Production deployment (coming soon) |
+| [Changelog](changelog.md) | What changed in the macOS/Linux port and new features |
 
 ## Quick Start
 

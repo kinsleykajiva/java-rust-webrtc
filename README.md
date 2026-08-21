@@ -6,7 +6,7 @@ The goal is to give Java developers a first-class WebRTC stack they can use from
 
 ## Project Status
 
-This library is under active development. The core peer connection, ICE, data channels, media tracks, and trickle ICE are working. The desktop module provides JavaFX-based device access for camera and microphone capture. More features and a proper release are coming soon.
+This library is under active development. The core peer connection, ICE, data channels, media tracks, and trickle ICE are working, and all seven webrtc-rs media examples now run on macOS (see [Media Examples](docs/media-examples.md)). The desktop module provides JavaFX-based device access for camera and microphone capture. More features and a proper release are coming soon.
 
 ## Requirements
 
@@ -65,6 +65,17 @@ java --enable-native-access=ALL-UNNAMED -cp "target/classes:target/dependency/*:
 | `RtpToWebRtcDemo` | Forwarding raw RTP packets into a peer connection |
 | `AudioTranscoderDemo` | Audio transcoding bridge (Opus/G.722/PCMU/PCMA) |
 | `SupportedCodecs` | Lists all codecs registered in the media engine |
+
+### Media Examples (webrtc-rs ports)
+
+| Demo | Description |
+|------|-------------|
+| `RtpForwarderDemo` | RTP bridge between two peer connections |
+| `InsertableStreamsDemo` | Send/recv RTP transform (Insertable Streams pattern) |
+| `SaveToDiskAv1Demo` | Receive AV1 RTP, depacketize, write an IVF file |
+| `SimulcastDemo` | 3-layer simulcast via separate `TrackLocal` tracks |
+| `SimulcastAddTransceiverFromKindDemo` | 3-layer simulcast via `addTransceiverFromKindWithEncoding` |
+| `RtcpProcessingDemo` | Observe incoming RTCP via `setRtcpForwarder` + `pollRtcp` |
 
 ### Desktop Demos
 
@@ -136,9 +147,15 @@ Full documentation lives in the [docs/](docs/) directory:
 - [Media Tracks](docs/media-tracks.md) -- Audio/video sending and receiving
 - [Data Channels](docs/data-channels.md) -- Reliable messaging
 - [Play from Disk](docs/play-from-disk.md) -- Reading and sending media files
+- [Save to Disk (AV1)](docs/save-to-disk-av1.md) -- Receiving AV1 RTP and writing IVF
+- [Simulcast](docs/simulcast.md) -- Multi-layer publishing
+- [RTCP Processing](docs/rtcp-processing.md) -- Observing incoming RTCP
+- [RTP-to-WebRTC](docs/rtp-to-webrtc.md) -- Bridging raw RTP into a peer connection
+- [Media Examples](docs/media-examples.md) -- Index of the seven media example demos
 - [Trickle ICE](docs/trickle-ice.md) -- Candidate trickling
 - [Port Allocator](docs/port-allocator.md) -- Port range and flags
 - [Statistics](docs/stats.md) -- Monitoring connections
+- [Changelog](docs/changelog.md) -- What changed in the macOS/Linux port and new features
 - [Deployment](docs/deployment.md) -- Coming soon
 
 ## License
