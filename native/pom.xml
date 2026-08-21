@@ -20,6 +20,10 @@
     <properties>
         <native.src.dir>../native/unknown</native.src.dir>
         <native.lib.name>rust_webrtc_ffi.dll</native.lib.name>
+        <!-- When true (-Pbundle-all-natives) the jar embeds every platform binary under
+             /native/<classifier>/<libname>; used by CI releases so consumers on any OS
+             resolve one artifact. Local dev keeps the flat single-binary layout. -->
+        <bundle.all.natives>false</bundle.all.natives>
     </properties>
 
     <build>
@@ -78,6 +82,16 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Maven Central requirements: sources and javadoc jars. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 
@@ -86,6 +100,133 @@
          The Linux binary (native/linux-x86_64/librust_webrtc_ffi.so) must be produced by
          building the crate on Linux before packaging there. -->
     <profiles>
+        <!-- Release bundling: embed ALL platform binaries under /native/<classifier>/ so a
+             single published jar serves Windows/macOS/Linux consumers. Activated by CI:
+             mvn -Pbundle-all-natives ... -->
+        <profile>
+            <id>bundle-all-natives</id>
+            <build>
+                <plugins>
+                    <!-- Neutralize the default flat copy (nothing matches this include). -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-native-lib</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}</directory>
+                                            <includes>
+                                                <include>*.__no_single_binary_in_bundle_mode__</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-native-windows</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/native/windows-x86_64</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/windows-x86_64</directory>
+                                            <includes>
+                                                <include>rust_webrtc_ffi.dll</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-native-macos</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/native/osx-aarch_64</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/osx-aarch_64</directory>
+                                            <includes>
+                                                <include>librust_webrtc_ffi.dylib</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>copy-native-linux</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/native/linux-x86_64</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/linux-x86_64</directory>
+                                            <includes>
+                                                <include>librust_webrtc_ffi.so</include>
+                                            </includes>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- Attach one classified jar per platform in addition to the
+                         all-platforms main jar. -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <version>3.6.0</version>
+                        <executions>
+                            <execution>
+                                <id>attach-classified-native</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>attach-artifact</goal>
+                                </goals>
+                                <configuration>
+                                    <artifacts>
+                                        <artifact>
+                                            <file>${project.build.directory}/${project.build.finalName}.jar</file>
+                                            <classifier>windows-x86_64</classifier>
+                                            <type>jar</type>
+                                        </artifact>
+                                        <artifact>
+                                            <file>${project.build.directory}/${project.build.finalName}.jar</file>
+                                            <classifier>osx-aarch_64</classifier>
+                                            <type>jar</type>
+                                        </artifact>
+                                        <artifact>
+                                            <file>${project.build.directory}/${project.build.finalName}.jar</file>
+                                            <classifier>linux-x86_64</classifier>
+                                            <type>jar</type>
+                                        </artifact>
+                                    </artifacts>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <profile>
             <id>native-windows</id>
             <activation>

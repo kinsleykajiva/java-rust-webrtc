@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -47,6 +48,13 @@ public final class NativeLibraryLoader {
             Platform.WINDOWS, ".dll",
             Platform.MACOS, ".dylib",
             Platform.LINUX, ".so");
+
+    /** Classpath subdirectories that may hold the binary inside a multi-platform jar. */
+    private static final Map<Platform, List<String>> RESOURCE_DIRS = Map.of(
+            Platform.WINDOWS, List.of("windows-x86_64"),
+            Platform.MACOS, List.of("osx-aarch_64", "osx-x86_64"),
+            Platform.LINUX, List.of("linux-x86_64"),
+            Platform.UNKNOWN, List.of());
 
     private static final Platform PLATFORM = detect();
     private static final String LIB_NAME = LIB_NAMES.getOrDefault(PLATFORM, "rust_webrtc_ffi.dll");
@@ -99,18 +107,12 @@ public final class NativeLibraryLoader {
             return;
         }
 
-        // 1) Jar/classpath-embedded copy under /native/<name>.
-        String resource = "/native/" + LIB_NAME;
-        try (InputStream in = NativeLibraryLoader.class.getResourceAsStream(resource)) {
-            if (in != null) {
-                Path tmp = Files.createTempFile("rust_webrtc_ffi", TEMP_SUFFIX);
-                Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
-                tmp.toFile().deleteOnExit();
-                System.load(tmp.toAbsolutePath().toString());
-                return;
-            }
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to load native WebRTC library", e);
+        // 1) Jar/classpath-embedded copy. Release jars embed every platform under
+        //    /native/<classifier>/<name>; local dev builds use the flat /native/<name>.
+        String resource = findClasspathResource();
+        if (resource != null) {
+            extractAndLoad(resource);
+            return;
         }
 
         // 2) Filesystem search. Covers runs launched from an IDE whose "Make" step
@@ -127,6 +129,29 @@ public final class NativeLibraryLoader {
                 "Native library not found: " + LIB_NAME + " (platform=" + PLATFORM + "). Build the"
                         + " rust-webrtc-ffi cdylib with `cargo build --release`, ensure it is embedded"
                         + " under /native, or set -Dwebrtc.native.lib=<absolute-path> to the file.");
+    }
+
+    /** Returns the classpath resource path of the first matching binary, or null. */
+    private static String findClasspathResource() {
+        for (String dir : RESOURCE_DIRS.getOrDefault(PLATFORM, List.of())) {
+            String candidate = "/native/" + dir + "/" + LIB_NAME;
+            if (NativeLibraryLoader.class.getResource(candidate) != null) {
+                return candidate;
+            }
+        }
+        String legacy = "/native/" + LIB_NAME;
+        return NativeLibraryLoader.class.getResource(legacy) != null ? legacy : null;
+    }
+
+    private static void extractAndLoad(String resource) {
+        try (InputStream in = NativeLibraryLoader.class.getResourceAsStream(resource)) {
+            Path tmp = Files.createTempFile("rust_webrtc_ffi", TEMP_SUFFIX);
+            Files.copy(in, tmp, StandardCopyOption.REPLACE_EXISTING);
+            tmp.toFile().deleteOnExit();
+            System.load(tmp.toAbsolutePath().toString());
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to load native WebRTC library", e);
+        }
     }
 
     /**

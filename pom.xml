@@ -9,6 +9,38 @@
     <version>0.1.0</version>
     <packaging>pom</packaging>
 
+    <name>JavaRust-Webrtc</name>
+    <description>A high-performance, pure-Java WebRTC library backed by a native Rust engine (webrtc-rs) via the Java 25 Foreign Function &amp; Memory API.</description>
+    <url>https://github.com/kinsleykajiva/java-rust-webrtc</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Kinsley Kajiva</name>
+            <email>kajivakinsley@gmail.com</email>
+            <organization>kinsleykajiva</organization>
+            <organizationUrl>https://github.com/kinsleykajiva</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/kinsleykajiva/java-rust-webrtc.git</connection>
+        <developerConnection>scm:git:ssh://github.com/kinsleykajiva/java-rust-webrtc.git</developerConnection>
+        <url>https://github.com/kinsleykajiva/java-rust-webrtc</url>
+    </scm>
+
     <properties>
         <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -63,6 +95,74 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- Sources jar (Maven Central requirement). Declared per published module. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- Javadoc jar (Maven Central requirement). Doclint disabled: generated
+                     FFM bindings are not fully documented. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.11.2</version>
+                    <configuration>
+                        <doclint>none</doclint>
+                        <failOnError>false</failOnError>
+                        <quiet>true</quiet>
+                        <additionalOptions>-Xdoclint:none</additionalOptions>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- GPG signing (Maven Central requirement). Passphrase is read from the
+                     local ~/.m2/settings.xml server with id gpg.passphrase; never committed. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.7</version>
+                    <configuration>
+                        <keyname>${gpg.keyname}</keyname>
+                        <passphraseServerId>gpg.passphrase</passphraseServerId>
+                        <gpgArguments>
+                            <arg>--pinentry-mode</arg>
+                            <arg>loopback</arg>
+                        </gpgArguments>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>sign-artifacts</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>sign</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -82,10 +182,45 @@
                     </java>
                 </configuration>
             </plugin>
+
+            <!-- Publishes the reactor (parent + native + library) to the Sonatype Central
+                 Portal. Demo/desktop modules are excluded. Credentials come from the local
+                 ~/.m2/settings.xml server with id "central". -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.8.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <excludeArtifacts>
+                        <artifact>demo-code</artifact>
+                        <artifact>demo-desktop</artifact>
+                        <artifact>desktop</artifact>
+                    </excludeArtifacts>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <!-- Release signing. Activate with -Prelease when deploying to Maven Central:
+             mvn -Prelease clean deploy
+             The signing key id lives in the local ~/.m2/settings.xml (property
+             gpg.keyname in an active profile); the passphrase sits under the
+             server with id gpg.passphrase. Nothing secret is stored in this repo. -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- Per-OS profiles select the native artifact name and the jextract
              launcher so the same reactor builds on Windows, macOS, and Linux. -->
         <profile>

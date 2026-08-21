@@ -17,13 +17,13 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-        <!-- Platform-specific native shared library (classified per OS/arch). Resolved from
-             the reactor or from Maven Central; the loader extracts it from the classpath. -->
+        <!-- Native shared libraries for every supported platform, embedded in one jar
+             (/native/<classifier>/<libname>). The loader extracts the right binary for
+             the running OS at runtime. -->
         <dependency>
             <groupId>io.github.kinsleykajiva</groupId>
             <artifactId>JavaRust-Webrtc-native</artifactId>
             <version>${project.version}</version>
-            <classifier>${native.classifier}</classifier>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -167,7 +167,7 @@
                                 <argument>-t</argument>
                                 <argument>io.github.kinsleykajiva.webrtc.ffm</argument>
                                 <argument>--output</argument>
-                                <argument>${generated.sources.dir}</argument>
+                                <argument>${project.basedir}/src/main/java</argument>
                                 <argument>-I</argument>
                                 <argument>${ffi.crate.dir}</argument>
                                 <argument>${ffi.header}</argument>
@@ -178,25 +178,8 @@
             </plugin>
 
             <!-- Register the jextract output as a compile source root. -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.0</version>
-                <executions>
-                    <execution>
-                        <id>add-generated-sources</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>add-source</goal>
-                        </goals>
-                        <configuration>
-                            <sources>
-                                <source>${generated.sources.dir}</source>
-                            </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
+            <!-- FFM bindings are committed under src/main/java/.../ffm and regenerated
+                 in place by run-jextract; CI deploy skips both exec steps with -Dexec.skip=true. -->
 
             <!-- Ensure the FFM native access flag is set for any in-module tests/runs. -->
             <plugin>
@@ -206,6 +189,16 @@
                 <configuration>
                     <argLine>--enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
+            </plugin>
+
+            <!-- Maven Central requirements: sources and javadoc jars. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

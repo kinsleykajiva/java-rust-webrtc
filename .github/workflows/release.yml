@@ -1,0 +1,103 @@
+name: Release to Maven Central
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  build-natives:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            classifier: windows-x86_64
+            lib: rust_webrtc_ffi.dll
+          - os: macos-latest
+            classifier: osx-aarch_64
+            lib: librust_webrtc_ffi.dylib
+          - os: ubuntu-22.04
+            classifier: linux-x86_64
+            lib: librust_webrtc_ffi.so
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build Rust FFI cdylib (release)
+        working-directory: rust-webrtc-ffi
+        run: cargo build --release
+      - name: Ad-hoc codesign dylib (macOS hardened runtime)
+        if: runner.os == 'macOS'
+        run: codesign --force --sign - rust-webrtc-ffi/target/release/librust_webrtc_ffi.dylib || true
+      - name: Upload native library
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.classifier }}
+          path: rust-webrtc-ffi/target/release/${{ matrix.lib }}
+
+  deploy:
+    needs: build-natives
+    runs-on: ubuntu-latest
+    environment: maven-central
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'liberica'
+      - name: Fetch native artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: native-*
+      - name: Place binaries
+        shell: bash
+        run: |
+          cp artifacts/native-windows-x86_64/rust_webrtc_ffi.dll       native/windows-x86_64/
+          cp artifacts/native-osx-aarch_64/librust_webrtc_ffi.dylib   native/osx-aarch_64/
+          cp artifacts/native-linux-x86_64/librust_webrtc_ffi.so      native/linux-x86_64/
+          ls -lR native/
+      - name: Import GPG secret key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --list-secret-keys
+      - name: Deploy to Maven Central
+        env:
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cat > settings-release.xml <<EOF
+          <settings>
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${CENTRAL_USERNAME}</username>
+                <password>${CENTRAL_PASSWORD}</password>
+              </server>
+            </servers>
+            <profiles>
+              <profile>
+                <id>gpg-signing</id>
+                <properties>
+                  <gpg.keyname>C396F5369161517219B04239145F01D359D48C86</gpg.keyname>
+                  <gpg.passphrase>${GPG_PASSPHRASE}</gpg.passphrase>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>gpg-signing</activeProfile>
+            </activeProfiles>
+          </settings>
+          EOF
+          mvn -B "-Pbundle-all-natives,release" clean deploy \
+            -s settings-release.xml \
+            -Dexec.skip=true \
+            -DskipTests
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f settings-release.xml

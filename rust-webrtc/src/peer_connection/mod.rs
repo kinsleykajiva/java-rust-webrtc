@@ -54,7 +54,7 @@ pub(crate) mod transports;
 
 use log::error;
 use std::collections::{HashMap, HashSet};
-use std::net::ToSocketAddrs;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -546,7 +546,7 @@ where
 
         let mut std_tcp_listeners = Vec::new();
         for addr in tcp_addrs {
-            let listener = std::net::TcpListener::bind(addr)?;
+            let listener = bind_tcp_listener_reuse(addr)?;
             listener.set_nonblocking(true)?;
             let local_addr = listener.local_addr()?;
             std_tcp_listeners.push((local_addr, listener));
@@ -1059,4 +1059,26 @@ where
         let mut core = self.inner.core.lock().await;
         core.get_stats(now, selector)
     }
+}
+
+/// Binds a TCP listener with `SO_REUSEADDR` set before bind.
+///
+/// Without this option, Windows refuses to rebind a listening port while
+/// connections accepted from it linger in TIME_WAIT (macOS and Linux allow
+/// rebinding by default), which made fixed-port ICE-over-TCP setups fail on
+/// immediate re-runs.
+fn bind_tcp_listener_reuse<A: ToSocketAddrs>(addr: A) -> Result<std::net::TcpListener> {
+    let resolved = addr
+        .to_socket_addrs()?
+        .next()
+        .ok_or(Error::Other("TCP bind address did not resolve".to_owned()))?;
+    let socket = socket2::Socket::new(
+        socket2::Domain::for_address(resolved),
+        socket2::Type::STREAM,
+        Some(socket2::Protocol::TCP),
+    )?;
+    socket.set_reuse_address(true)?;
+    socket.bind(&resolved.into())?;
+    socket.listen(1024)?;
+    Ok(std::net::TcpListener::from(socket))
 }
