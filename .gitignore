@@ -4,7 +4,7 @@ JavaRust-Webrtc.iml
 *.class
 /tmp_error.txt
 /tmp_output.txt
-
+maven.txt
 # Build outputs
 **/target/
 !**/src/**/target/
