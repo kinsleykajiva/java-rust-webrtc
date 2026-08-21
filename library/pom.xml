@@ -115,6 +115,8 @@
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_add_transceiver_from_kind</argument>
                                 <argument>--include-function</argument>
+                                <argument>webrtc_ffi_add_transceiver_from_kind_with_encoding</argument>
+                                <argument>--include-function</argument>
                                 <argument>webrtc_ffi_get_stats</argument>
                                 <argument>--include-function</argument>
                                 <argument>webrtc_ffi_track_remote_ssrcs</argument>

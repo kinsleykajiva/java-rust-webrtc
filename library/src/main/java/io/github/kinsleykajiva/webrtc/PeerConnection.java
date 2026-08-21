@@ -224,10 +224,46 @@ public final class PeerConnection implements AutoCloseable {
         }
     }
 
+    /** Adds a transceiver with a single explicit encoding (one simulcast layer).
+     *  Pass a {@code rid} (e.g. "q"/"h"/"f") and {@code ssrc} to identify the layer;
+     *  {@code mimeType} like "video/VP8", a {@code clockRate} (e.g. 90000) and
+     *  {@code channels} (0 for video). */
+    public void addTransceiverFromKindWithEncoding(MediaKind kind, TransceiverDirection direction,
+                                                   String rid, long ssrc, String mimeType, long clockRate, int channels) {
+        checkClosed();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment ridSeg = (rid == null || rid.isEmpty()) ? MemorySegment.NULL : arena.allocateFrom(rid);
+            MemorySegment mimeSeg = (mimeType == null || mimeType.isEmpty()) ? MemorySegment.NULL : arena.allocateFrom(mimeType);
+            int rc = webrtc_ffi_h.webrtc_ffi_add_transceiver_from_kind_with_encoding(
+                    handle, kind.value, direction.value, ridSeg, (int) ssrc, mimeSeg, (int) clockRate, channels);
+            if (rc != 0) {
+                throw new IllegalStateException("addTransceiverFromKindWithEncoding failed: " + rc);
+            }
+        }
+    }
+
     /** Fetches stats for this peer connection. */
     public StatsReport getStats() {
         checkClosed();
         return StatsReport.fetch(this);
+    }
+
+    /**
+     * Drains and returns all captured incoming RTCP packets as a JSON array of
+     * hex-encoded packet blobs. Returns {@code "[]"} when no RTCP was captured or
+     * the RTCP forwarder was not enabled on the configuration. Requires the peer
+     * to have been created from a {@link Configuration} with
+     * {@link Configuration#setRtcpForwarder(boolean)} enabled.
+     */
+    public String pollRtcp() {
+        checkClosed();
+        MemorySegment ptr = webrtc_ffi_h.webrtc_ffi_poll_rtcp(handle);
+        if (ptr == null || ptr.equals(MemorySegment.NULL)) {
+            return "[]";
+        }
+        String s = ptr.reinterpret(Long.MAX_VALUE).getString(0L);
+        webrtc_ffi_h.webrtc_ffi_free_string(ptr);
+        return s;
     }
 
     /** Adds a remote ICE candidate. */

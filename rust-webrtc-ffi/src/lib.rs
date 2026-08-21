@@ -7,7 +7,7 @@
 //! - Events (ICE candidate, connection state, data channel, track, data channel messages)
 //!   are delivered to Java through C function-pointer callbacks supplied at creation time.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::os::raw::c_int;
 use std::sync::{Arc, Mutex};
@@ -19,6 +19,52 @@ use webrtc::peer_connection::{
     PeerConnection, PeerConnectionBuilder, PeerConnectionEventHandler, RTCConfigurationBuilder,
     RTCPeerConnectionIceEvent,
 };
+use rtc::peer_connection::configuration::interceptor_registry::register_default_interceptors;
+
+// Built-in RTCP forwarder interceptor: captures each incoming RTCP packet and
+// pushes a marshalled copy onto a queue the application can drain via
+// `webrtc_ffi_poll_rtcp`. Mirrors the `rtcp-processing` Rust example.
+mod rtcp_forwarder {
+    use rtc::interceptor::{Interceptor, Packet, StreamInfo, TaggedPacket, interceptor};
+    use rtc::sansio;
+    use rtc::shared::error::Error;
+    use std::sync::Arc;
+    use super::{Mutex, VecDeque};
+
+    /// Shared queue of marshalled RTCP packets, drained by the FFI.
+    pub type RtcpQueue = Arc<Mutex<VecDeque<Vec<u8>>>>;
+
+    #[derive(Interceptor)]
+    pub struct RtcpForwarderInterceptor<P> {
+        #[next]
+        next: P,
+        read_queue: RtcpQueue,
+    }
+
+    impl<P> RtcpForwarderInterceptor<P> {
+        pub fn new(next: P, queue: RtcpQueue) -> Self {
+            Self { next, read_queue: queue }
+        }
+    }
+
+    #[interceptor]
+    impl<P: Interceptor> RtcpForwarderInterceptor<P> {
+        #[overrides]
+        fn handle_read(&mut self, msg: TaggedPacket) -> Result<(), Self::Error> {
+            if let Packet::Rtcp(rtcp_packets) = &msg.message {
+                let mut guard = self.read_queue.lock().unwrap();
+                if guard.len() < 8192 {
+                    for pkt in rtcp_packets {
+                        if let Ok(bytes) = pkt.marshal() {
+                            guard.push_back(bytes.to_vec());
+                        }
+                    }
+                }
+            }
+            self.next.handle_read(msg)
+        }
+    }
+}
 use webrtc::runtime::default_runtime;
 use webrtc::data_channel::{DataChannelEvent, RTCDataChannelInit};
 use webrtc::media_stream::track_remote::{TrackRemote, TrackRemoteEvent};
@@ -92,6 +138,9 @@ struct Config {
     max_port: u16,
     /// Bitwise OR of PortAllocatorFlags controlling candidate gathering.
     allocator_flags: u32,
+    /// When set, install a built-in RTCP forwarder interceptor so the application
+    /// can read incoming RTCP via `webrtc_ffi_poll_rtcp`.
+    rtcp_forwarder: bool,
 }
 
 /// Live peer connection plus its event forwarder and open data channels.
@@ -103,6 +152,9 @@ struct Peer {
     data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
     /// Per-channel message/open/close callbacks, keyed by channel id.
     dc_callbacks: Arc<DcCallbackMap>,
+    /// Queue of marshalled incoming RTCP packets (only set when the RTCP
+    /// forwarder interceptor is installed). Drained by `webrtc_ffi_poll_rtcp`.
+    rtcp_queue: Option<Arc<Mutex<VecDeque<Vec<u8>>>>>,
 }
 
 impl Peer {
@@ -110,11 +162,13 @@ impl Peer {
         pc: Arc<dyn PeerConnection>,
         data_channels: Arc<Mutex<HashMap<u16, Arc<dyn webrtc::data_channel::DataChannel>>>>,
         dc_callbacks: Arc<DcCallbackMap>,
+        rtcp_queue: Option<Arc<Mutex<VecDeque<Vec<u8>>>>>,
     ) -> Self {
         Self {
             pc,
             data_channels,
             dc_callbacks,
+            rtcp_queue,
         }
     }
 }
@@ -201,6 +255,7 @@ pub extern "C" fn webrtc_ffi_config_create() -> *mut c_void {
         min_port: 0,
         max_port: 0,
         allocator_flags: 0,
+        rtcp_forwarder: false,
     });
     Box::into_raw(cfg) as *mut c_void
 }
@@ -343,6 +398,23 @@ pub extern "C" fn webrtc_ffi_config_set_allocator_flags(
     }
     unsafe {
         (*(cfg as *mut Config)).allocator_flags = flags as u32;
+    }
+    0
+}
+
+/// Enable the built-in RTCP forwarder interceptor on a configuration. When set,
+/// the peer connection built from this config will expose incoming RTCP packets
+/// via `webrtc_ffi_poll_rtcp`.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_config_set_rtcp_forwarder(
+    cfg: *mut c_void,
+    enabled: c_int,
+) -> c_int {
+    if cfg.is_null() {
+        return -1;
+    }
+    unsafe {
+        (*(cfg as *mut Config)).rtcp_forwarder = enabled != 0;
     }
     0
 }
@@ -497,19 +569,44 @@ pub extern "C" fn webrtc_ffi_peer_create(
         eprintln!("failed to register default codecs: {e:?}");
         return std::ptr::null_mut();
     }
+
+    // Build the interceptor registry. The built-in RTCP forwarder (when enabled in
+    // the config) captures incoming RTCP so the app can read it via webrtc_ffi_poll_rtcp.
+    let forwarder_enabled = if cfg.is_null() {
+        false
+    } else {
+        unsafe { &*(cfg as *const Config) }.rtcp_forwarder
+    };
+    let mut rtcp_queue: Option<Arc<Mutex<VecDeque<Vec<u8>>>>> = None;
+    // Build the default RTP/RTCP interceptor chain (so RTCP reports are generated) and
+    // always wrap it with the RTCP forwarder interceptor. When disabled we keep a throwaway
+    // queue that is never drained; this keeps the registry type uniform across branches.
+    let base = match register_default_interceptors(
+        webrtc::peer_connection::Registry::<webrtc::peer_connection::NoopInterceptor>::new(),
+        &mut media_engine,
+    ) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("register_default_interceptors failed: {e:?}");
+            return std::ptr::null_mut();
+        }
+    };
+    let registry = if forwarder_enabled {
+        let q = Arc::new(Mutex::new(VecDeque::new()));
+        rtcp_queue = Some(q.clone());
+        base.with(move |next| rtcp_forwarder::RtcpForwarderInterceptor::new(next, q))
+    } else {
+        base.with(|next| rtcp_forwarder::RtcpForwarderInterceptor::new(next, Arc::new(Mutex::new(VecDeque::new()))))
+    };
+
     builder = builder.with_media_engine(media_engine);
+    let mut builder = builder.with_interceptor_registry(registry);
 
     // Drive the PeerConnection on an explicit tokio runtime (matches the
     // reference examples, which call `with_runtime`).
     if let Some(rt) = default_runtime() {
         builder = builder.with_runtime(rt);
     }
-
-    // Default interceptor registry. Data channels do not require interceptors,
-    // but the builder expects a `Registry<NoopInterceptor>`; the default
-    // registry (no RTP/RTCP interceptors) is sufficient for data-only use.
-    let registry = webrtc::peer_connection::Registry::<webrtc::peer_connection::NoopInterceptor>::new();
-    builder = builder.with_interceptor_registry(registry);
 
     let mut setting_engine = SettingEngine::default();
 
@@ -612,7 +709,7 @@ pub extern "C" fn webrtc_ffi_peer_create(
         Err(_) => return std::ptr::null_mut(),
     };
 
-    let peer = Box::new(Peer::new(pc, data_channels, dc_callbacks));
+    let peer = Box::new(Peer::new(pc, data_channels, dc_callbacks, rtcp_queue));
     Box::into_raw(peer) as *mut c_void
 }
 
@@ -1135,9 +1232,15 @@ fn spawn_track_poller(track: Arc<dyn TrackRemote>, id: u32) {
                 }
                 Some(TrackRemoteEvent::OnEnding)
                 | Some(TrackRemoteEvent::OnEnded)
-                | Some(TrackRemoteEvent::OnError)
-                | None => {
+                | Some(TrackRemoteEvent::OnError) => {
                     break;
+                }
+                // `track.poll()` returns `None` when no RTP/event is currently
+                // available (the track is still live), not only when it has ended.
+                // Breaking here would kill the poller before any media arrives, so
+                // keep polling with a short sleep to avoid a busy loop.
+                None => {
+                    tokio::time::sleep(std::time::Duration::from_millis(1)).await;
                 }
                 _ => {}
             }
@@ -1190,6 +1293,111 @@ pub extern "C" fn webrtc_ffi_add_transceiver_from_kind(
         Ok(_) => 0,
         Err(_) => -4,
     }
+}
+
+/// Add a transceiver of the given codec kind with a single explicit encoding
+/// (used to set up one simulcast layer). `rid`/`mime_type` may be empty; `ssrc`
+/// of 0 lets the engine pick one. Returns 0 on success, negative on error.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_add_transceiver_from_kind_with_encoding(
+    peer: *mut c_void,
+    kind: c_int,
+    direction: c_int,
+    rid: *const c_char,
+    ssrc: u32,
+    mime_type: *const c_char,
+    clock_rate: u32,
+    channels: u32,
+) -> c_int {
+    if peer.is_null() {
+        return -1;
+    }
+    let codec_kind = match kind {
+        CODEC_AUDIO => RtpCodecKind::Audio,
+        CODEC_VIDEO => RtpCodecKind::Video,
+        _ => return -2,
+    };
+    let dir = match direction {
+        DIR_SENDRECV => RTCRtpTransceiverDirection::Sendrecv,
+        DIR_SENDONLY => RTCRtpTransceiverDirection::Sendonly,
+        DIR_RECVONLY => RTCRtpTransceiverDirection::Recvonly,
+        DIR_INACTIVE => RTCRtpTransceiverDirection::Inactive,
+        _ => RTCRtpTransceiverDirection::Unspecified,
+    };
+    let rid_str = read_str(rid).to_string();
+    let mime = read_str(mime_type).to_string();
+    let has_send = matches!(
+        dir,
+        RTCRtpTransceiverDirection::Sendrecv | RTCRtpTransceiverDirection::Sendonly
+    );
+    let send_encodings = if has_send {
+        let mut coding = RTCRtpCodingParameters {
+            rid: rid_str.clone(),
+            ..Default::default()
+        };
+        if ssrc != 0 {
+            coding.ssrc = Some(ssrc);
+        }
+        let codec = if mime.is_empty() {
+            RTCRtpCodec::default()
+        } else {
+            RTCRtpCodec {
+                mime_type: mime,
+                clock_rate,
+                channels: channels as u16,
+                sdp_fmtp_line: String::new(),
+                rtcp_feedback: vec![],
+            }
+        };
+        vec![RTCRtpEncodingParameters {
+            rtp_coding_parameters: coding,
+            active: true,
+            codec,
+            ..Default::default()
+        }]
+    } else {
+        vec![]
+    };
+    let init = RTCRtpTransceiverInit {
+        direction: dir,
+        streams: vec![],
+        send_encodings,
+    };
+    let p = unsafe { &*(peer as *const Peer) };
+    match block_on(p.pc.add_transceiver_from_kind(codec_kind, Some(init))) {
+        Ok(_) => 0,
+        Err(_) => -3,
+    }
+}
+
+/// Drain and return all captured incoming RTCP packets as a JSON array of
+/// hex-encoded packet blobs. Returns a NUL-terminated C string (empty array `[]`
+/// if no RTCP was captured or the forwarder was not installed) which the caller
+/// must free with `webrtc_ffi_free_string`.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_poll_rtcp(peer: *mut c_void) -> *mut c_char {
+    if peer.is_null() {
+        return unsafe { into_cstring(String::new()) };
+    }
+    let p = unsafe { &*(peer as *const Peer) };
+    let mut out = String::from("[");
+    if let Some(q) = &p.rtcp_queue {
+        let mut guard = q.lock().unwrap();
+        let mut first = true;
+        while let Some(bytes) = guard.pop_front() {
+            if !first {
+                out.push(',');
+            }
+            first = false;
+            out.push('"');
+            for b in &bytes {
+                out.push_str(&format!("{:02x}", b));
+            }
+            out.push('"');
+        }
+    }
+    out.push(']');
+    unsafe { into_cstring(out) }
 }
 
 /// Get inbound RTP stream stats as a JSON string. Returns a NUL-terminated

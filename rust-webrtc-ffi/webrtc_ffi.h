@@ -105,6 +105,13 @@ int webrtc_ffi_config_set_port_range(void *cfg, int min_port, int max_port);
 int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags);
 
 /**
+ * Enable the built-in RTCP forwarder interceptor on a configuration. When set,
+ * the peer connection built from this config will expose incoming RTCP packets
+ * via `webrtc_ffi_poll_rtcp`.
+ */
+int webrtc_ffi_config_set_rtcp_forwarder(void *cfg, int enabled);
+
+/**
  * Create a peer connection. `user_data` is echoed back to every callback.
  * Returns an opaque handle (or null on failure).
  */
@@ -225,6 +232,28 @@ char *webrtc_ffi_supported_codecs(void);
  * Returns 0 on success.
  */
 int webrtc_ffi_add_transceiver_from_kind(void *peer, int kind, int direction);
+
+/**
+ * Add a transceiver of the given codec kind with a single explicit encoding
+ * (used to set up one simulcast layer). `rid`/`mime_type` may be empty; `ssrc`
+ * of 0 lets the engine pick one. Returns 0 on success, negative on error.
+ */
+int webrtc_ffi_add_transceiver_from_kind_with_encoding(void *peer,
+                                                       int kind,
+                                                       int direction,
+                                                       const char *rid,
+                                                       uint32_t ssrc,
+                                                       const char *mime_type,
+                                                       uint32_t clock_rate,
+                                                       uint32_t channels);
+
+/**
+ * Drain and return all captured incoming RTCP packets as a JSON array of
+ * hex-encoded packet blobs. Returns a NUL-terminated C string (empty array `[]`
+ * if no RTCP was captured or the forwarder was not installed) which the caller
+ * must free with `webrtc_ffi_free_string`.
+ */
+char *webrtc_ffi_poll_rtcp(void *peer);
 
 /**
  * Get inbound RTP stream stats as a JSON string. Returns a NUL-terminated

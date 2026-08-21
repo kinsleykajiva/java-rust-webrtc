@@ -129,6 +129,21 @@ public final class Configuration implements AutoCloseable {
         return this;
     }
 
+    /**
+     * Installs a built-in RTCP forwarder interceptor on this configuration so the
+     * application can read incoming RTCP via {@link PeerConnection#pollRtcp()}.
+     *
+     * @param enabled {@code true} to enable RTCP forwarding
+     */
+    public Configuration setRtcpForwarder(boolean enabled) {
+        checkClosed();
+        int rc = webrtc_ffi_h.webrtc_ffi_config_set_rtcp_forwarder(handle, enabled ? 1 : 0);
+        if (rc != 0) {
+            throw new IllegalStateException("Failed to set RTCP forwarder: " + rc);
+        }
+        return this;
+    }
+
     private static MemorySegment str(Arena arena, String s) {
         if (s == null) {
             return MemorySegment.NULL;

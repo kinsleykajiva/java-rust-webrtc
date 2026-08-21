@@ -2,7 +2,9 @@ package io.github.kinsleykajiva;
 
 import io.github.kinsleykajiva.webrtc.Configuration;
 import io.github.kinsleykajiva.webrtc.DataChannel;
+import io.github.kinsleykajiva.webrtc.DtlsRole;
 import io.github.kinsleykajiva.webrtc.MediaKind;
+import io.github.kinsleykajiva.webrtc.NetworkType;
 import io.github.kinsleykajiva.webrtc.PeerConnection;
 import io.github.kinsleykajiva.webrtc.PeerConnectionState;
 import io.github.kinsleykajiva.webrtc.SessionDescription;
@@ -40,7 +42,7 @@ public class RtpToWebRtcDemo {
         final PeerConnection[] answererRef = new PeerConnection[1];
 
         // ---- Answerer ----
-        Configuration answererCfg = Configuration.create();
+        Configuration answererCfg = Configuration.create().useTcpOnly("127.0.0.1:8453", DtlsRole.CLIENT);
         PeerConnection answerer = PeerConnection.create(answererCfg, new PeerConnection.Observer() {
             @Override
             public void onIceCandidate(String candidate, String sdpMid) {
@@ -71,7 +73,7 @@ public class RtpToWebRtcDemo {
         answererRef[0] = answerer;
 
         // ---- Offerer ----
-        Configuration offererCfg = Configuration.create();
+        Configuration offererCfg = Configuration.create().setTransport("", "127.0.0.1:0", 0, NetworkType.TCP.value);
         PeerConnection offerer = PeerConnection.create(offererCfg, new PeerConnection.Observer() {
             @Override
             public void onIceCandidate(String candidate, String sdpMid) {
