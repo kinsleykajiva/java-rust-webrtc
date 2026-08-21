@@ -1,0 +1,1 @@
+RtcpForwarderInterceptor<P>: rtc::sansio::Protocol<TransportMessage<rtc::rtc_interceptor::Packet>, TransportMessage<rtc::rtc_interceptor::Packet>, ()>
