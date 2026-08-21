@@ -18,6 +18,7 @@ This directory contains the full documentation for the JavaRust-Webrtc library.
 | [RTCP Processing](rtcp-processing.md) | Observing incoming RTCP via the forwarder interceptor |
 | [RTP-to-WebRTC](rtp-to-webrtc.md) | Bridging raw RTP into a peer connection |
 | [Media Examples](media-examples.md) | Index of the seven webrtc-rs media example demos |
+| [Packaging & Distribution](packaging.md) | Maven/Gradle imports, native artifacts, Maven Central plan |
 | [Trickle ICE](trickle-ice.md) | Candidate trickling, gathering states |
 | [Port Allocator](port-allocator.md) | Port range filtering, allocator flags |
 | [Statistics](stats.md) | Fetching and reading connection stats |

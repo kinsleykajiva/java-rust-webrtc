@@ -2313,7 +2313,6 @@ dependencies = [
  "futures",
  "log",
  "rtc",
- "socket2",
  "tokio",
 ]
 

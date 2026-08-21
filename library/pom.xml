@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.github.kinsleykajiva</groupId>
         <artifactId>JavaRust-Webrtc</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>0.1.0</version>
     </parent>
 
     <artifactId>library</artifactId>
@@ -16,6 +16,14 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+        <!-- Platform-specific native shared library (classified per OS/arch). Resolved from
+             the reactor or from Maven Central; the loader extracts it from the classpath. -->
+        <dependency>
+            <groupId>io.github.kinsleykajiva</groupId>
+            <artifactId>JavaRust-Webrtc-native</artifactId>
+            <version>${project.version}</version>
+            <classifier>${native.classifier}</classifier>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -185,33 +193,6 @@
                             <sources>
                                 <source>${generated.sources.dir}</source>
                             </sources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Embed the native library inside the jar under /native so it ships with the library. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
-                <executions>
-                    <execution>
-                        <id>copy-native-lib</id>
-                        <phase>process-classes</phase>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <configuration>
-                            <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${ffi.crate.dir}/target/release</directory>
-                                    <includes>
-                                        <include>${ffi.lib.name}</include>
-                                    </includes>
-                                </resource>
-                            </resources>
                         </configuration>
                     </execution>
                 </executions>

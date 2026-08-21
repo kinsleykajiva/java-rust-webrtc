@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.github.kinsleykajiva</groupId>
+        <artifactId>JavaRust-Webrtc</artifactId>
+        <version>0.1.0</version>
+    </parent>
+
+    <artifactId>JavaRust-Webrtc-native</artifactId>
+    <packaging>jar</packaging>
+
+    <name>JavaRust-Webrtc Native Libraries</name>
+    <description>Prebuilt rust-webrtc-ffi shared libraries, packaged per platform as classified Maven artifacts.</description>
+
+    <!-- Default to an absent platform; the per-OS profiles below point at the real binary. -->
+    <properties>
+        <native.src.dir>../native/unknown</native.src.dir>
+        <native.lib.name>rust_webrtc_ffi.dll</native.lib.name>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Bundle the native shared library inside the jar at /native/<name> so the
+                 Java loader (NativeLibraryLoader) can extract and System.load() it from the
+                 classpath. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>copy-native-lib</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.outputDirectory}/native</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${native.src.dir}</directory>
+                                    <includes>
+                                        <include>${native.lib.name}</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Also attach the jar under the platform classifier so all platforms can be
+                 published to Maven Central from their respective build OS. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>attach-classified-native</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>attach-artifact</goal>
+                        </goals>
+                        <configuration>
+                            <artifacts>
+                                <artifact>
+                                    <file>${project.build.directory}/${project.build.finalName}.jar</file>
+                                    <classifier>${native.classifier}</classifier>
+                                    <type>jar</type>
+                                </artifact>
+                            </artifacts>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <!-- Per-OS profiles select which committed binary to bundle. They activate on the same
+         OS detection as the parent's platform profiles (which supply ${native.classifier}).
+         The Linux binary (native/linux-x86_64/librust_webrtc_ffi.so) must be produced by
+         building the crate on Linux before packaging there. -->
+    <profiles>
+        <profile>
+            <id>native-windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <native.src.dir>../native/windows-x86_64</native.src.dir>
+                <native.lib.name>rust_webrtc_ffi.dll</native.lib.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>native-macos</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <native.src.dir>../native/osx-aarch_64</native.src.dir>
+                <native.lib.name>librust_webrtc_ffi.dylib</native.lib.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>native-linux</id>
+            <activation>
+                <os>
+                    <name>linux</name>
+                </os>
+            </activation>
+            <properties>
+                <native.src.dir>../native/linux-x86_64</native.src.dir>
+                <native.lib.name>librust_webrtc_ffi.so</native.lib.name>
+            </properties>
+        </profile>
+    </profiles>
+</project>

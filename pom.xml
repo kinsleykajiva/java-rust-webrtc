@@ -6,7 +6,7 @@
 
     <groupId>io.github.kinsleykajiva</groupId>
     <artifactId>JavaRust-Webrtc</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>pom</packaging>
 
     <properties>
@@ -30,6 +30,7 @@
     </properties>
 
     <modules>
+        <module>native</module>
         <module>library</module>
         <module>demo-code</module>
         <module>desktop</module>
@@ -96,6 +97,7 @@
             </activation>
             <properties>
                 <ffi.lib.name>rust_webrtc_ffi.dll</ffi.lib.name>
+                <native.classifier>windows-x86_64</native.classifier>
                 <jextract.executable>${jextract.home}/bin/jextract.bat</jextract.executable>
             </properties>
         </profile>
@@ -108,6 +110,7 @@
             </activation>
             <properties>
                 <ffi.lib.name>librust_webrtc_ffi.dylib</ffi.lib.name>
+                <native.classifier>osx-aarch_64</native.classifier>
                 <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
             </properties>
         </profile>
@@ -120,6 +123,7 @@
             </activation>
             <properties>
                 <ffi.lib.name>librust_webrtc_ffi.so</ffi.lib.name>
+                <native.classifier>linux-x86_64</native.classifier>
                 <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
             </properties>
         </profile>

@@ -152,6 +152,7 @@ Full documentation lives in the [docs/](docs/) directory:
 - [RTCP Processing](docs/rtcp-processing.md) -- Observing incoming RTCP
 - [RTP-to-WebRTC](docs/rtp-to-webrtc.md) -- Bridging raw RTP into a peer connection
 - [Media Examples](docs/media-examples.md) -- Index of the seven media example demos
+- [Packaging & Distribution](docs/packaging.md) -- Maven/Gradle imports, native artifacts, Maven Central plan
 - [Trickle ICE](docs/trickle-ice.md) -- Candidate trickling
 - [Port Allocator](docs/port-allocator.md) -- Port range and flags
 - [Statistics](docs/stats.md) -- Monitoring connections
