@@ -11,6 +11,8 @@
 
     <artifactId>demo-desktop</artifactId>
     <packaging>jar</packaging>
+    <name>JavaRust-Webrtc Desktop Demo</name>
+    <description>Demo desktop application for the JavaRust-Webrtc library.</description>
 
     <dependencies>
         <dependency>

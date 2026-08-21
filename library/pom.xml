@@ -11,6 +11,8 @@
 
     <artifactId>library</artifactId>
     <packaging>jar</packaging>
+    <name>JavaRust-Webrtc Library</name>
+    <description>High-performance WebRTC for Java: pure-Java API over a Rust core, accessed through the Java 21+ Foreign Function and Memory API.</description>
 
     <dependencies>
         <dependency>

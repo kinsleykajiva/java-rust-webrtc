@@ -11,6 +11,8 @@
 
     <artifactId>desktop</artifactId>
     <packaging>jar</packaging>
+    <name>JavaRust-Webrtc Desktop</name>
+    <description>Desktop application module built on the JavaRust-Webrtc library.</description>
 
     <properties>
         <javafx.version>25</javafx.version>

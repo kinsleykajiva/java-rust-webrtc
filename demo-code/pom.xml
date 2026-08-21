@@ -11,6 +11,8 @@
 
     <artifactId>demo-code</artifactId>
     <packaging>jar</packaging>
+    <name>JavaRust-Webrtc Demos</name>
+    <description>Runnable examples demonstrating the JavaRust-Webrtc library.</description>
 
     <dependencies>
         <dependency>
