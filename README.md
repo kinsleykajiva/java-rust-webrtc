@@ -8,6 +8,71 @@ The goal is to give Java developers a first-class WebRTC stack they can use from
 
 This library is under active development. The core peer connection, ICE, data channels, media tracks, and trickle ICE are working, and all seven webrtc-rs media examples now run on macOS (see [Media Examples](docs/media-examples.md)). The desktop module provides JavaFX-based device access for camera and microphone capture. More features and a proper release are coming soon.
 
+## Installation & Dependency Setup
+
+Artifacts are published to **[Maven Central](https://central.sonatype.com/search?q=io.github.kinsleykajiva)** under `io.github.kinsleykajiva`.
+
+Add both the platform-neutral Java library and the native bundle matching your operating system.
+
+### Maven
+
+```xml
+<properties>
+    <!-- Choose classifier: osx-aarch_64 | windows-x86_64 | linux-x86_64 -->
+    <webrtc.native.classifier>osx-aarch_64</webrtc.native.classifier>
+</properties>
+
+<dependencies>
+    <!-- WebRTC Java API -->
+    <dependency>
+        <groupId>io.github.kinsleykajiva</groupId>
+        <artifactId>library</artifactId>
+        <version>0.1.0</version>
+    </dependency>
+
+    <!-- Platform Native Engine -->
+    <dependency>
+        <groupId>io.github.kinsleykajiva</groupId>
+        <artifactId>JavaRust-Webrtc-native</artifactId>
+        <version>0.1.0</version>
+        <classifier>${webrtc.native.classifier}</classifier>
+    </dependency>
+</dependencies>
+```
+
+### Gradle (Groovy DSL)
+
+```groovy
+dependencies {
+    implementation 'io.github.kinsleykajiva:library:0.1.0'
+    // Choose classifier: osx-aarch_64 | windows-x86_64 | linux-x86_64
+    implementation 'io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:osx-aarch_64'
+}
+
+application {
+    applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
+}
+```
+
+### Gradle (Kotlin DSL)
+
+```kotlin
+dependencies {
+    implementation("io.github.kinsleykajiva:library:0.1.0")
+    // Choose classifier: osx-aarch_64 | windows-x86_64 | linux-x86_64
+    implementation("io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:osx-aarch_64")
+}
+
+application {
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+```
+
+> [!IMPORTANT]
+> Because this library uses Java 22+ Foreign Function & Memory (FFM) API, you must pass `--enable-native-access=ALL-UNNAMED` when running the JVM.
+
+For more details on platform classifiers and auto-detection, see [Packaging & Distribution](docs/packaging.md).
+
 ## Requirements
 
 | Tool | Version |

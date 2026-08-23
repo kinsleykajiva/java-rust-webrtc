@@ -1,56 +1,63 @@
 # Packaging & Distribution
 
-This page explains how the library and its native binaries are packaged, and how to consume them
-from Maven and Gradle. The first publishable version is **0.1.0**. It is **not yet deployed** to
-Maven Central — the coordinates and build below are what you will use once it is released.
+Version **0.1.0** is available on **[Maven Central](https://central.sonatype.com/search?q=io.github.kinsleykajiva)**
+under the group `io.github.kinsleykajiva`.
+
+---
 
 ## Artifacts
 
-The project produces two related artifacts under the group `io.github.kinsleykajiva`:
+The project publishes two artifacts:
 
-| Artifact | Contents | Platform? |
-|----------|----------|-----------|
-| `JavaRust-Webrtc` | Pure-Java FFM bindings + API (`io.github.kinsleykajiva.webrtc.*`) | Platform-neutral |
-| `JavaRust-Webrtc-native` | The prebuilt Rust `cdylib`, bundled at `/native/<libname>` | One jar **per platform** (classifier) |
+| Artifact ID | Description | Platform? |
+|-------------|-------------|-----------|
+| `library` | Pure-Java FFM API (`io.github.kinsleykajiva.webrtc.*`) | Platform-neutral |
+| `JavaRust-Webrtc-native` | Prebuilt Rust `cdylib` bundled at `/native/<libname>` | Per-platform (classifier) |
 
-The native library cannot be platform-neutral, so it is published as a set of **classified** jars.
-Pick the classifier that matches your target OS/arch:
+The native library is published as a set of **classified** jars — one per OS/arch. Pick the
+classifier that matches your target platform:
 
-| Classifier | Native file | OS / arch |
-|------------|-------------|-----------|
+| Classifier | Native binary | Platform |
+|------------|---------------|----------|
 | `osx-aarch_64` | `librust_webrtc_ffi.dylib` | macOS (Apple Silicon) |
-| `windows-x86_64` | `rust_webrtc_ffi.dll` | Windows (x86-64) |
-| `linux-x86_64` | `librust_webrtc_ffi.so` | Linux (x86-64) |
+| `windows-x86_64` | `rust_webrtc_ffi.dll` | Windows x86-64 |
+| `linux-x86_64` | `librust_webrtc_ffi.so` | Linux x86-64 |
 
-The Java loader (`NativeLibraryLoader`) finds the library on the classpath at
-`/native/<libname>` and extracts it to a temp file before `System.load()`. You normally do **not**
-need to set `-Dwebrtc.native.lib`; do so only to override with a specific file (e.g. while
-developing the Rust side).
+The Java runtime loader (`NativeLibraryLoader`) finds the right binary on the classpath at
+`/native/<libname>` and extracts it to a temp directory before `System.load()`. You normally do
+**not** need to set `-Dwebrtc.native.lib`; use that flag only to override with a hand-built
+native binary while iterating on the Rust side.
+
+---
 
 ## Maven
 
-Add the platform-neutral API jar plus the native jar for your platform. Use a property so the
-classifier matches the build OS:
+Add the API jar and the native jar for your platform. Using a property keeps the classifier in
+one place:
 
 ```xml
 <properties>
-    <!-- Pick the classifier for your platform:
-         osx-aarch_64 | windows-x86_64 | linux-x86_64 -->
+    <!-- Change to windows-x86_64 or linux-x86_64 to match your OS. -->
     <webrtc.native.classifier>osx-aarch_64</webrtc.native.classifier>
 </properties>
 
 <dependencies>
+    <!-- Java WebRTC API (platform-neutral) -->
     <dependency>
         <groupId>io.github.kinsleykajiva</groupId>
-        <artifactId>JavaRust-Webrtc</artifactId>
+        <artifactId>library</artifactId>
         <version>0.1.0</version>
     </dependency>
+
+    <!-- Native Rust engine for your platform -->
     <dependency>
         <groupId>io.github.kinsleykajiva</groupId>
         <artifactId>JavaRust-Webrtc-native</artifactId>
         <version>0.1.0</version>
         <classifier>${webrtc.native.classifier}</classifier>
     </dependency>
+
+    <!-- Logging facade (bring your own implementation) -->
     <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
@@ -59,104 +66,175 @@ classifier matches the build OS:
 </dependencies>
 ```
 
-When running, enable FFM native access (required by the JDK's Foreign Function & Memory API):
+The library uses the Java Foreign Function & Memory API. Add the JVM flag when running your app:
+
+```xml
+<!-- maven-surefire-plugin / maven-failsafe-plugin -->
+<argLine>--enable-native-access=ALL-UNNAMED</argLine>
+```
+
+Or on the command line:
 
 ```bash
-java --enable-native-access=ALL-UNNAMED -cp "app.jar" com.example.App
+java --enable-native-access=ALL-UNNAMED -jar app.jar
 ```
+
+---
 
 ## Gradle (Groovy DSL)
 
 ```groovy
 dependencies {
-    implementation 'io.github.kinsleykajiva:JavaRust-Webrtc:0.1.0'
+    // Java WebRTC API (platform-neutral)
+    implementation 'io.github.kinsleykajiva:library:0.1.0'
+
+    // Native Rust engine — swap the classifier for your OS:
+    //   osx-aarch_64 | windows-x86_64 | linux-x86_64
     implementation 'io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:osx-aarch_64'
+
+    // Logging facade (bring your own implementation)
     implementation 'org.slf4j:slf4j-api:2.0.13'
 }
 
+// Required: the FFM API needs explicit native-access permission.
 application {
     applicationDefaultJvmArgs = ['--enable-native-access=ALL-UNNAMED']
 }
+
+// Also cover tasks that fork a JVM directly:
+tasks.withType(JavaExec).configureEach {
+    jvmArgs '--enable-native-access=ALL-UNNAMED'
+}
 ```
+
+---
 
 ## Gradle (Kotlin DSL)
 
 ```kotlin
 dependencies {
-    implementation("io.github.kinsleykajiva:JavaRust-Webrtc:0.1.0")
+    // Java WebRTC API (platform-neutral)
+    implementation("io.github.kinsleykajiva:library:0.1.0")
+
+    // Native Rust engine — swap the classifier for your OS:
+    //   osx-aarch_64 | windows-x86_64 | linux-x86_64
     implementation("io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:osx-aarch_64")
+
+    // Logging facade (bring your own implementation)
     implementation("org.slf4j:slf4j-api:2.0.13")
 }
 
-tasks.withType<JavaExec> {
+// Required: the FFM API needs explicit native-access permission.
+application {
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+
+// Also cover tasks that fork a JVM directly:
+tasks.withType<JavaExec>().configureEach {
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 ```
 
-## Building it yourself (local install)
+---
 
-The reactor builds the Rust crate, generates the FFM bindings with jextract, compiles the Java API,
-and packages the native binaries. From the repo root:
+## Selecting the right native classifier
+
+| OS | Classifier |
+|----|-----------|
+| macOS (Apple Silicon / M-series) | `osx-aarch_64` |
+| Windows 64-bit | `windows-x86_64` |
+| Linux 64-bit | `linux-x86_64` |
+
+To auto-detect the platform at Gradle build time:
+
+```groovy
+// Groovy DSL — auto-detect platform
+def nativeClassifier = {
+    def os = System.getProperty('os.name').toLowerCase()
+    if (os.contains('mac'))   return 'osx-aarch_64'
+    if (os.contains('win'))   return 'windows-x86_64'
+    if (os.contains('linux')) return 'linux-x86_64'
+    throw new GradleException("Unsupported platform: $os")
+}()
+
+dependencies {
+    implementation "io.github.kinsleykajiva:library:0.1.0"
+    implementation "io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:${nativeClassifier}"
+}
+```
+
+---
+
+## Building from source (local install)
+
+You need Rust (stable ≥ 1.80), jextract 25, and Maven 3.8+.
 
 ```bash
-# Build the Rust cdylib, generate bindings, compile, and install everything locally.
+# 1. Build the Rust cdylib.
+cd rust-webrtc-ffi
+cargo build --release
+cd ..
+
+# 2. Compile the Java library, generate FFM bindings via jextract, and install locally.
 mvn clean install -Djextract.home=/path/to/jextract-25
 
-# Run a demo (the native jar is on the classpath transitively).
+# 3. Run any demo.
 java --enable-native-access=ALL-UNNAMED \
-     -cp "demo-code/target/classes:library/target/classes:\
-$JAVA_HOME/lib/slf4j-api-2.0.13.jar:...logback..." \
+     -cp "demo-code/target/classes:library/target/classes:..." \
      io.github.kinsleykajiva.RtpForwarderDemo
 ```
 
-The native binaries live in `native/<platform>/` (committed). On macOS the dylib must be ad-hoc
-signed before the JVM will load it — the `library` module signs the cargo-built dylib automatically,
-and you should also sign the committed copy if you rebuild it:
+On macOS the dylib must carry an ad-hoc code signature before the JVM will load it. The `library`
+module signs the cargo-built binary automatically, but if you manually rebuild it:
 
 ```bash
 codesign --force --sign - native/osx-aarch_64/librust_webrtc_ffi.dylib
 ```
 
-To produce the Linux `.so` or Windows `.dll`, build the `rust-webrtc-ffi` crate on that OS/arch and
-copy the output into the matching `native/<platform>/` directory before packaging there.
+---
 
-## Publishing to Maven Central (future)
+## Publishing a new release to Maven Central
 
-This version is **not deployed**. When it is, publish each platform's native jar plus the
-platform-neutral API jar into a single staged repository. Because the native classifier must be
-built on its own OS, the usual flow is:
+Each platform's native classifier must be built on its own OS. The typical release flow:
 
 ```bash
 # On macOS:
-mvn -Pplatform-macos deploy -DskipTests        # deploys ...-native:0.1.0:osx-aarch_64
+mvn -Prelease,platform-macos clean deploy -DskipTests
+
 # On Windows:
-mvn -Pplatform-windows deploy -DskipTests      # deploys ...-native:0.1.0:windows-x86_64
+mvn -Prelease,platform-windows clean deploy -DskipTests
+
 # On Linux:
-mvn -Pplatform-linux deploy -DskipTests        # deploys ...-native:0.1.0:linux-x86_64
-# Once all classifiers are staged, close + release the staging repository.
+mvn -Prelease,platform-linux clean deploy -DskipTests
+
+# Once all three platform jars plus the API jar are staged, release the bundle via
+# the Sonatype Central Portal UI or the central-publishing-maven-plugin auto-publish.
 ```
 
-The `native` module's `build-helper-maven-plugin:attach-artifact` execution attaches the
-platform-classified jar during `package`, so each OS build contributes its own classifier to the
-shared `0.1.0` staging repository. The API jar (`JavaRust-Webrtc`) is platform-neutral and can be
-deployed from any OS.
+The `native` module's `build-helper-maven-plugin:attach-artifact` attaches the classified jar
+during `package`. The `central-publishing-maven-plugin` (version 0.8.0) uploads everything to
+Sonatype Central Portal.
 
-Coordinates for Maven Central will be:
+---
+
+## Maven Central coordinates
 
 ```
-io.github.kinsleykajiva:JavaRust-Webrtc:0.1.0
+io.github.kinsleykajiva:library:0.1.0
 io.github.kinsleykajiva:JavaRust-Webrtc-native:0.1.0:<classifier>
 ```
+
+---
 
 ## Project layout
 
 ```
-native/                        # committed prebuilt cdylibs, one dir per platform
+native/                              # Committed prebuilt cdylibs, one subdir per platform
   osx-aarch_64/librust_webrtc_ffi.dylib
   windows-x86_64/rust_webrtc_ffi.dll
-  linux-x86_64/                # build the .so here before packaging on Linux
-native/pom.xml                # packages each binary as a classified Maven artifact
-rust-webrtc-ffi/              # the Rust crate (cdylib + cbindgen header)
-library/                      # pure-Java API; consumes JavaRust-Webrtc-native via classifier
-demo-code/                    # runnable examples
+  linux-x86_64/librust_webrtc_ffi.so
+native/pom.xml                       # Packages each binary as a classified Maven artifact
+rust-webrtc-ffi/                     # Rust crate (cdylib + cbindgen C header)
+library/                             # Pure-Java API (artifactId: library)
+demo-code/                           # Runnable examples
 ```
