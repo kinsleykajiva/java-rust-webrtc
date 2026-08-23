@@ -193,6 +193,8 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
                     <excludeArtifacts>
                         <artifact>demo-code</artifact>
                         <artifact>demo-desktop</artifact>
