@@ -70,6 +70,7 @@
                             <goal>exec</goal>
                         </goals>
                         <configuration>
+                            <skip>${jextract.skip}</skip>
                             <executable>${jextract.executable}</executable>
                             <arguments>
                                 <argument>--include-function</argument>

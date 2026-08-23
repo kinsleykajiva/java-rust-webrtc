@@ -54,9 +54,10 @@
         <ffi.dll>${ffi.crate.dir}/target/release/rust_webrtc_ffi.dll</ffi.dll>
         <!-- Platform-specific native library artifact name (overridden per OS profile). -->
         <ffi.lib.name>rust_webrtc_ffi.dll</ffi.lib.name>
-        <!-- jextract launcher (overridden per OS profile). -->
-        <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
+        <!-- jextract launcher (overridden per OS profile). Skipped by default since FFM bindings are committed. -->
+        <jextract.skip>true</jextract.skip>
         <jextract.home>C:\Users\Kinsley\jextract-25</jextract.home>
+        <jextract.executable>${jextract.home}/bin/jextract</jextract.executable>
         <generated.sources.dir>${project.build.directory}/generated-sources/jextract</generated.sources.dir>
         <javafx.version>25</javafx.version>
     </properties>
