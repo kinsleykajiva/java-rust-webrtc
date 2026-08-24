@@ -68,6 +68,7 @@
         <module>demo-code</module>
         <module>desktop</module>
         <module>demo-desktop</module>
+        <module>demo-server</module>
     </modules>
 
     <dependencyManagement>

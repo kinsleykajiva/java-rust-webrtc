@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>JavaRust-WebRTC &mdash; Echo / SFU Demo</title>
+    <style>
+        :root { color-scheme: dark; }
+        body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; margin: 0; padding: 24px; }
+        h1 { font-size: 20px; margin: 0 0 4px; }
+        .sub { color: #9aa; font-size: 13px; margin-bottom: 16px; }
+        .grid { display: flex; gap: 16px; flex-wrap: wrap; }
+        .pane { background: #171a21; border: 1px solid #262b36; border-radius: 10px; padding: 10px; width: 360px; }
+        .pane h2 { font-size: 13px; margin: 0 0 8px; color: #9aa; font-weight: 600; }
+        video { width: 100%; background: #000; border-radius: 6px; aspect-ratio: 4/3; }
+        .controls { margin: 16px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+        button { background: #2b6cff; color: #fff; border: 0; padding: 9px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+        button:hover { background: #1f57d6; }
+        button.secondary { background: #2a2f3a; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .status { margin-top: 12px; font-size: 13px; color: #9aa; }
+        .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #c0392b; margin-right: 6px; }
+        .dot.ok { background: #2ecc71; }
+        #log { margin-top: 12px; font-family: ui-monospace, monospace; font-size: 12px; background: #0b0d12; border: 1px solid #222; border-radius: 8px; padding: 10px; height: 160px; overflow: auto; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>JavaRust-WebRTC &mdash; Echo / SFU Demo</h1>
+    <div class="sub">Media is sent to the Java backend, looped straight back (RTP echo), and rendered as the "echoed" stream.</div>
+
+    <div class="controls">
+        <button id="start">Start</button>
+            <button id="mute" class="secondary" disabled>Mute audio</button>
+            <button id="video" class="secondary" disabled>Turn off video</button>
+            <button id="unmute" class="secondary" disabled>Unmute echo audio</button>
+            <button id="hangup" class="secondary" disabled>Hang up</button>
+    </div>
+
+    <div class="grid">
+        <div class="pane">
+            <h2>Local (you)</h2>
+            <video id="local" autoplay playsinline muted></video>
+        </div>
+        <div class="pane">
+            <h2>Echoed (from server)</h2>
+            <video id="remote" autoplay playsinline muted></video>
+        </div>
+    </div>
+
+    <div class="status"><span id="dot" class="dot"></span><span id="state">disconnected</span></div>
+    <div id="log"></div>
+
+    <script>
+        // ---- configuration -------------------------------------------------
+        const WS_PORT = 8081;                       // matches --ws on the server
+        // When served from the demo HTTP server (http://localhost:8080/...) the
+        // page hostname is "localhost"; fall back to it for file:// and other
+        // empty-hostname origins so the WebSocket URL is always valid.
+        const WS_HOST = location.hostname || 'localhost';
+        const WS_URL = `ws://${WS_HOST}:${WS_PORT}`;
+
+        // ---- DOM -----------------------------------------------------------
+        const $ = id => document.getElementById(id);
+        const localVideo = $('local'), remoteVideo = $('remote');
+        const startBtn = $('start'), muteBtn = $('mute'), videoBtn = $('video'), hangupBtn = $('hangup');
+        const dot = $('dot'), stateEl = $('state'), logEl = $('log');
+
+        // ---- signaling protocol (mirrors the Java Signal envelope) ---------
+        let ws = null;
+        let session = null;
+        let pc = null;
+        let localStream = null;
+        let remoteStream = new MediaStream();
+        let audioMuted = false, videoOff = false;
+        // Remote ICE candidates can arrive before the answer is applied; buffer them.
+        let pendingRemoteCandidates = [];
+
+        function log(msg) {
+            const ts = new Date().toLocaleTimeString();
+            const line = `[${ts}] ${msg}`;
+            logEl.textContent += line + '\n';
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(line);
+        }
+
+        function send(action, transaction, payload) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            const msg = {
+                version: "1.0",
+                type: "request",
+                action,
+                session: session || "",
+                transaction: transaction || crypto.randomUUID(),
+                payload: payload || {}
+            };
+            ws.send(JSON.stringify(msg));
+        }
+
+        function setStatus(text, ok) {
+            stateEl.textContent = text;
+            dot.classList.toggle('ok', !!ok);
+        }
+
+        // ---- websocket lifecycle ------------------------------------------
+        function connect() {
+            ws = new WebSocket(WS_URL);
+            ws.onopen = () => { log('ws open'); };
+            ws.onclose = () => { log('ws closed'); setStatus('disconnected', false); };
+            ws.onerror = (e) => log('ws error');
+            ws.onmessage = (ev) => handleMessage(JSON.parse(ev.data));
+        }
+
+        function handleMessage(msg) {
+            const a = msg.action;
+            log(`<- ${a}` + (msg.error ? ` (error: ${msg.error.message})` : ''));
+            if (a === 'ready') {
+                session = msg.session;
+            } else if (a === 'answer') {
+                log('ANSWER SDP:\n' + msg.payload.sdp);
+                pc.setRemoteDescription({ type: 'answer', sdp: msg.payload.sdp })
+                  .then(() => {
+                      // Now safe to apply any candidates that arrived early.
+                      log('setRemoteDescription(answer) OK; flushing ' + pendingRemoteCandidates.length + ' pending candidates');
+                      pendingRemoteCandidates.forEach(c =>
+                          pc.addIceCandidate(c).catch(e => log('flush addIceCandidate failed: ' + e)));
+                      pendingRemoteCandidates = [];
+                  })
+                  .catch(e => log('setRemoteDescription failed: ' + e));
+            } else if (a === 'candidate') {
+                const c = msg.payload;
+                const cand = { candidate: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: c.sdpMLineIndex };
+                log('REMOTE ice-candidate: ' + c.candidate);
+                if (pc && pc.remoteDescription && pc.remoteDescription.type === 'answer') {
+                    pc.addIceCandidate(cand).catch(e => log('addIceCandidate failed: ' + e));
+                } else {
+                    pendingRemoteCandidates.push(cand);
+                }
+            } else if (a === 'peer-connected') {
+                setStatus('connected (echo active)', true);
+            } else if (a === 'peer-disconnected') {
+                setStatus('peer disconnected', false);
+            } else if (a === 'bye') {
+                log('server ended session');
+            } else if (a === 'error') {
+                log('server error: ' + (msg.error ? msg.error.message : 'unknown'));
+            }
+        }
+
+        // ---- media + peer connection --------------------------------------
+        async function start() {
+            startBtn.disabled = true;
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            } catch (e) {
+                log('getUserMedia failed: ' + e);
+                startBtn.disabled = false;
+                return;
+            }
+            localVideo.srcObject = localStream;
+            remoteStream = new MediaStream();
+            remoteVideo.srcObject = remoteStream;
+
+            pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            pc.onicecandidate = (e) => {
+                if (e.candidate) {
+                    log('LOCAL ice-candidate: ' + e.candidate.candidate);
+                    send('candidate', null, {
+                        candidate: e.candidate.candidate,
+                        sdpMid: e.candidate.sdpMid,
+                        sdpMLineIndex: e.candidate.sdpMLineIndex
+                    });
+                } else {
+                    log('LOCAL ice-candidate: gathering complete');
+                }
+            };
+            pc.oniceconnectionstatechange = () => log('iceConnectionState=' + pc.iceConnectionState);
+            pc.onsignalingstatechange = () => log('signalingState=' + pc.signalingState);
+            pc.onconnectionstatechange = () => log('connectionState=' + pc.connectionState);
+            pc.ontrack = (e) => {
+                log('remote track: kind=' + e.track.kind + ' streams=' + (e.streams ? e.streams.length : 0));
+                // Some servers don't associate the track with a MediaStream in SDP;
+                // fall back to attaching the track directly so the element always gets media.
+                if (e.streams && e.streams[0]) {
+                    remoteVideo.srcObject = e.streams[0];
+                } else {
+                    remoteStream.addTrack(e.track);
+                    remoteVideo.srcObject = remoteStream;
+                }
+            };
+
+            localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            log('OFFER SDP:\n' + offer.sdp);
+            send('offer', null, { sdp: offer.sdp });
+            log('sent offer');
+
+            muteBtn.disabled = videoBtn.disabled = hangupBtn.disabled = false;
+        }
+
+        function hangup() {
+            if (pc) { pc.close(); pc = null; }
+            if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+            localVideo.srcObject = remoteVideo.srcObject = null;
+            send('leave', null, {});
+            setStatus('disconnected', false);
+            startBtn.disabled = false;
+            muteBtn.disabled = videoBtn.disabled = hangupBtn.disabled = true;
+        }
+
+        muteBtn.onclick = () => {
+            audioMuted = !audioMuted;
+            localStream.getAudioTracks().forEach(t => t.enabled = !audioMuted);
+            muteBtn.textContent = audioMuted ? 'Unmute audio' : 'Mute audio';
+            send('media-state', null, { audio: !audioMuted, video: !videoOff });
+        };
+
+        // The echoed stream is muted by default so it autoplays (browsers block
+        // autoplay of unmuted remote media) and to avoid microphone feedback.
+        // This toggle lets you hear the loopback if you want.
+        const unmuteBtn = $('unmute');
+        unmuteBtn.onclick = () => {
+            remoteVideo.muted = !remoteVideo.muted;
+            unmuteBtn.textContent = remoteVideo.muted ? 'Unmute echo audio' : 'Mute echo audio';
+            if (!remoteVideo.muted) remoteVideo.play().catch(e => log('play failed: ' + e));
+        };
+
+        videoBtn.onclick = () => {
+            videoOff = !videoOff;
+            localStream.getVideoTracks().forEach(t => t.enabled = !videoOff);
+            videoBtn.textContent = videoOff ? 'Turn on video' : 'Turn off video';
+            send('media-state', null, { audio: !audioMuted, video: !videoOff });
+        };
+
+        startBtn.onclick = start;
+        hangupBtn.onclick = hangup;
+
+        if (location.protocol === 'file:') {
+            log('WARNING: opened via file:// — getUserMedia may be blocked. ' +
+                'Use http://localhost:8080/echo-test.html instead.');
+        }
+
+        connect();
+    </script>
+</body>
+</html>

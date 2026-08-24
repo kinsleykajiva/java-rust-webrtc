@@ -112,9 +112,13 @@ int webrtc_ffi_config_set_allocator_flags(void *cfg, int flags);
 int webrtc_ffi_config_set_rtcp_forwarder(void *cfg, int enabled);
 
 /**
- * Create a peer connection. `user_data` is echoed back to every callback.
- * Returns an opaque handle (or null on failure).
+ * Restrict the media engine to the named codecs (comma/space separated, e.g.
+ * "opus,vp8"). An empty string clears any restriction, restoring the default
+ * codec set. Unknown names are ignored. Must be called before the peer
+ * connection is created.
  */
+int webrtc_ffi_config_set_codecs(void *cfg, const char *codecs);
+
 void *webrtc_ffi_peer_create(void *cfg,
                              void *user_data,
                              IceCandidateCallback on_ice_candidate,

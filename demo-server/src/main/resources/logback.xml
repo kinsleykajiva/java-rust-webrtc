@@ -1,0 +1,14 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{1} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Verbose debugging for the demo server itself (not the underlying library). -->
+    <logger name="io.github.kinsleykajiva.server" level="DEBUG"/>
+    <logger name="org.java_websocket" level="WARN"/>
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>

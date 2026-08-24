@@ -76,7 +76,7 @@ use webrtc::rtp_transceiver::RtpSender;
 use rtc::media::Sample;
 use rtc::rtp;
 use rtc::rtp_transceiver::rtp_sender::{
-    RTCRtpCodec, RTCRtpCodingParameters, RTCRtpEncodingParameters,
+    RTCRtpCodec, RTCRtpCodecParameters, RTCRtpCodingParameters, RTCRtpEncodingParameters,
 };
 use rtc::shared::marshal::Unmarshal;
 
@@ -141,6 +141,10 @@ struct Config {
     /// When set, install a built-in RTCP forwarder interceptor so the application
     /// can read incoming RTCP via `webrtc_ffi_poll_rtcp`.
     rtcp_forwarder: bool,
+    /// Optional, comma-separated codec allow-list (e.g. "opus,vp8"). When empty
+    /// the full default codec set is registered; when set, only the named codecs
+    /// are offered/accepted.
+    codecs: Vec<String>,
 }
 
 /// Live peer connection plus its event forwarder and open data channels.
@@ -256,6 +260,7 @@ pub extern "C" fn webrtc_ffi_config_create() -> *mut c_void {
         max_port: 0,
         allocator_flags: 0,
         rtcp_forwarder: false,
+        codecs: Vec::new(),
     });
     Box::into_raw(cfg) as *mut c_void
 }
@@ -419,6 +424,29 @@ pub extern "C" fn webrtc_ffi_config_set_rtcp_forwarder(
     0
 }
 
+/// Restrict the media engine to the named codecs (comma/space separated, e.g.
+/// "opus,vp8"). An empty string clears any restriction, restoring the default
+/// codec set. Unknown names are ignored. Must be called before the peer
+/// connection is created.
+#[no_mangle]
+pub extern "C" fn webrtc_ffi_config_set_codecs(
+    cfg: *mut c_void,
+    codecs: *const c_char,
+) -> c_int {
+    if cfg.is_null() {
+        return -1;
+    }
+    let list: Vec<String> = read_str(codecs)
+        .split(|c| c == ',' || c == ' ' || c == '\n')
+        .map(|s| s.trim().to_ascii_lowercase())
+        .filter(|s| !s.is_empty())
+        .collect();
+    unsafe {
+        (*(cfg as *mut Config)).codecs = list;
+    }
+    0
+}
+
 // ---------------------------------------------------------------------------
 // Peer connection
 // ---------------------------------------------------------------------------
@@ -518,6 +546,48 @@ fn callback_is_null<T>(f: Option<T>) -> bool {
 /// Create a peer connection. `user_data` is echoed back to every callback.
 /// Returns an opaque handle (or null on failure).
 #[no_mangle]
+/// Builds and registers a single named codec on the media engine. Supported
+/// names (case-insensitive): opus, pcmu, pcma, g722, vp8, vp9, h264.
+fn register_named_codec(
+    media_engine: &mut rtc::peer_connection::configuration::media_engine::MediaEngine,
+    name: &str,
+) -> webrtc::error::Result<()> {
+    use rtc::rtp_transceiver::rtp_sender::{RtpCodecKind, RTCRtpCodec, RTCRtpCodecParameters};
+
+    let spec = match name {
+        "opus" => (RtpCodecKind::Audio, "audio/opus", 48_000u32, 2u16, "minptime=10;useinbandfec=1".to_string(), 111u8),
+        "pcmu" => (RtpCodecKind::Audio, "audio/PCMU", 8_000u32, 1u16, String::new(), 0u8),
+        "pcma" => (RtpCodecKind::Audio, "audio/PCMA", 8_000u32, 1u16, String::new(), 8u8),
+        "g722" => (RtpCodecKind::Audio, "audio/G722", 8_000u32, 1u16, String::new(), 9u8),
+        "vp8" => (RtpCodecKind::Video, "video/VP8", 90_000u32, 0u16, String::new(), 96u8),
+        "vp9" => (RtpCodecKind::Video, "video/VP9", 90_000u32, 0u16, String::new(), 98u8),
+        "h264" => (
+            RtpCodecKind::Video,
+            "video/H264",
+            90_000u32,
+            0u16,
+            "level-asymmetry-allowed=1;packetization-mode=1".to_string(),
+            102u8,
+        ),
+        other => {
+            eprintln!("register_named_codec: unknown codec '{other}' ignored");
+            return Ok(());
+        }
+    };
+    let params = RTCRtpCodecParameters {
+        rtp_codec: RTCRtpCodec {
+            mime_type: spec.1.to_string(),
+            clock_rate: spec.2,
+            channels: spec.3,
+            sdp_fmtp_line: spec.4,
+            rtcp_feedback: vec![],
+        },
+        payload_type: spec.5,
+    };
+    media_engine.register_codec(params, spec.0)
+}
+
+#[no_mangle]
 pub extern "C" fn webrtc_ffi_peer_create(
     cfg: *mut c_void,
     user_data: *mut c_void,
@@ -563,11 +633,27 @@ pub extern "C" fn webrtc_ffi_peer_create(
 
     let mut builder = PeerConnectionBuilder::new().with_handler(Arc::new(handler));
 
-    // Register the default audio/video codec set so offers/answers can be generated.
+    // Register the audio/video codec set. When the config specifies an allow-list
+    // we register only those codecs (so offers/answers are restricted to them);
+    // otherwise we register the full default codec set.
     let mut media_engine = rtc::peer_connection::configuration::media_engine::MediaEngine::default();
-    if let Err(e) = media_engine.register_default_codecs() {
-        eprintln!("failed to register default codecs: {e:?}");
-        return std::ptr::null_mut();
+    let allow_list = if cfg.is_null() {
+        Vec::new()
+    } else {
+        unsafe { &*(cfg as *const Config) }.codecs.clone()
+    };
+    if allow_list.is_empty() {
+        if let Err(e) = media_engine.register_default_codecs() {
+            eprintln!("failed to register default codecs: {e:?}");
+            return std::ptr::null_mut();
+        }
+    } else {
+        for name in &allow_list {
+            if let Err(e) = register_named_codec(&mut media_engine, name) {
+                eprintln!("failed to register codec '{name}': {e:?}");
+                return std::ptr::null_mut();
+            }
+        }
     }
 
     // Build the interceptor registry. The built-in RTCP forwarder (when enabled in

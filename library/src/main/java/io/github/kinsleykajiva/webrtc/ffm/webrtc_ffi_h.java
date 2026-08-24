@@ -569,6 +569,44 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
         }
     }
 
+    private static class webrtc_ffi_config_set_codecs {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.of(
+            webrtc_ffi_h.C_INT,
+            webrtc_ffi_h.C_POINTER,
+            webrtc_ffi_h.C_POINTER
+        );
+
+        public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_config_set_codecs");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
+    public static FunctionDescriptor webrtc_ffi_config_set_codecs$descriptor() {
+        return webrtc_ffi_config_set_codecs.DESC;
+    }
+
+    public static MethodHandle webrtc_ffi_config_set_codecs$handle() {
+        return webrtc_ffi_config_set_codecs.HANDLE;
+    }
+
+    public static MemorySegment webrtc_ffi_config_set_codecs$address() {
+        return webrtc_ffi_config_set_codecs.ADDR;
+    }
+
+    public static int webrtc_ffi_config_set_codecs(MemorySegment cfg, MemorySegment codecs) {
+        var mh$ = webrtc_ffi_config_set_codecs.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("webrtc_ffi_config_set_codecs", cfg, codecs);
+            }
+            return (int)mh$.invokeExact(cfg, codecs);
+        } catch (Error | RuntimeException ex) {
+           throw ex;
+        } catch (Throwable ex$) {
+           throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
     private static class webrtc_ffi_peer_create {
         public static final FunctionDescriptor DESC = FunctionDescriptor.of(
             webrtc_ffi_h.C_POINTER,
@@ -1319,7 +1357,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Function descriptor for:
      * {@snippet lang=c :
-     * int webrtc_ffi_create_data_channel(void *peer, const char *label, _Bool ordered)
+     * int webrtc_ffi_create_data_channel(void *peer, const char *label, bool ordered)
      * }
      */
     public static FunctionDescriptor webrtc_ffi_create_data_channel$descriptor() {
@@ -1329,7 +1367,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Downcall method handle for:
      * {@snippet lang=c :
-     * int webrtc_ffi_create_data_channel(void *peer, const char *label, _Bool ordered)
+     * int webrtc_ffi_create_data_channel(void *peer, const char *label, bool ordered)
      * }
      */
     public static MethodHandle webrtc_ffi_create_data_channel$handle() {
@@ -1339,7 +1377,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
     /**
      * Address for:
      * {@snippet lang=c :
-     * int webrtc_ffi_create_data_channel(void *peer, const char *label, _Bool ordered)
+     * int webrtc_ffi_create_data_channel(void *peer, const char *label, bool ordered)
      * }
      */
     public static MemorySegment webrtc_ffi_create_data_channel$address() {
@@ -1348,7 +1386,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
 
     /**
      * {@snippet lang=c :
-     * int webrtc_ffi_create_data_channel(void *peer, const char *label, _Bool ordered)
+     * int webrtc_ffi_create_data_channel(void *peer, const char *label, bool ordered)
      * }
      */
     public static int webrtc_ffi_create_data_channel(MemorySegment peer, MemorySegment label, boolean ordered) {
@@ -1496,7 +1534,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
             webrtc_ffi_h.C_POINTER,
             webrtc_ffi_h.C_SHORT,
             webrtc_ffi_h.C_POINTER,
-            webrtc_ffi_h.C_LONG_LONG
+            webrtc_ffi_h.C_LONG
         );
 
         public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_data_channel_send_bytes");
@@ -2480,7 +2518,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
             webrtc_ffi_h.C_INT,
             webrtc_ffi_h.C_CHAR,
             webrtc_ffi_h.C_POINTER,
-            webrtc_ffi_h.C_LONG_LONG,
+            webrtc_ffi_h.C_LONG,
             webrtc_ffi_h.C_INT
         );
 
@@ -2850,7 +2888,7 @@ public class webrtc_ffi_h extends webrtc_ffi_h$shared {
             webrtc_ffi_h.C_INT,
             webrtc_ffi_h.C_INT,
             webrtc_ffi_h.C_POINTER,
-            webrtc_ffi_h.C_LONG_LONG
+            webrtc_ffi_h.C_LONG
         );
 
         public static final MemorySegment ADDR = SYMBOL_LOOKUP.findOrThrow("webrtc_ffi_write_rtp");

@@ -33,7 +33,7 @@ public final class webrtc_ffi_data_channel_set_callbacks$on_message {
     private static final FunctionDescriptor $DESC = FunctionDescriptor.ofVoid(
         webrtc_ffi_h.C_SHORT,
         webrtc_ffi_h.C_POINTER,
-        webrtc_ffi_h.C_LONG_LONG
+        webrtc_ffi_h.C_LONG
     );
 
     /**

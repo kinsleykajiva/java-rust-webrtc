@@ -151,6 +151,12 @@ java --enable-native-access=ALL-UNNAMED -cp "target/classes:target/dependency/*:
 | `CameraCaptureDemo` | Captures webcam video and sends it over WebRTC |
 | `VideoCallApp` | Full video call UI with device selection and controls |
 
+### Echo / SFU Demo Server
+
+| Module | Description |
+|--------|-------------|
+| `demo-server` | Async WebSocket signaling server that uses the library as an echo/SFU demo. A browser captures mic+camera, sends it over WebRTC, and the Java backend loops the RTP straight back. See [Echo / SFU Demo](docs/sfu-echo-demo.md). |
+
 ## Architecture
 
 ```
@@ -217,6 +223,7 @@ Full documentation lives in the [docs/](docs/) directory:
 - [RTCP Processing](docs/rtcp-processing.md) -- Observing incoming RTCP
 - [RTP-to-WebRTC](docs/rtp-to-webrtc.md) -- Bridging raw RTP into a peer connection
 - [Media Examples](docs/media-examples.md) -- Index of the seven media example demos
+- [Echo / SFU Demo](docs/sfu-echo-demo.md) -- Async WebSocket echo/signaling server + browser client
 - [Packaging & Distribution](docs/packaging.md) -- Maven/Gradle imports, native artifacts, Maven Central plan
 - [Trickle ICE](docs/trickle-ice.md) -- Candidate trickling
 - [Port Allocator](docs/port-allocator.md) -- Port range and flags

@@ -1,5 +1,0 @@
-Connected. Requester sends 32 KB chunks as fast as possible; responder measures throughput...
-[responder] data channel open 1
-[requester] data channel open 1
-[requester] total sent 209.72 MB in 0.4 s
-Done.

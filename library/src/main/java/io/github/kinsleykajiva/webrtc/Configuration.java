@@ -144,6 +144,27 @@ public final class Configuration implements AutoCloseable {
         return this;
     }
 
+    /**
+     * Restricts the media engine to the named codecs (comma/space separated,
+     * e.g. {@code "opus,vp8"}). When unset, the full default codec set is used.
+     * Restricting to a single audio + single video codec makes negotiation
+     * deterministic and improves browser interoperability (e.g. prefer VP8 over
+     * H264 for loopback). Unknown names are ignored by the native layer.
+     *
+     * @param codecs comma/space separated codec list, or {@code null}/empty to clear
+     */
+    public Configuration setCodecs(String codecs) {
+        checkClosed();
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment c = str(arena, codecs);
+            int rc = webrtc_ffi_h.webrtc_ffi_config_set_codecs(handle, c);
+            if (rc != 0) {
+                throw new IllegalStateException("Failed to set codecs: " + rc);
+            }
+        }
+        return this;
+    }
+
     private static MemorySegment str(Arena arena, String s) {
         if (s == null) {
             return MemorySegment.NULL;
